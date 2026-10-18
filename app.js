@@ -13,16 +13,16 @@
 
   // --- Configuration ---
   let config = {
-    myIdentity: 'user1', // 'user1' (Shaza) ou 'user2' (Copine)
+    myIdentity: 'user1', // 'user1' (Shaza) ou 'user2' (darling)
     activeLoggerUser: 'user1',
-    activeAgendaOwner: 'user2', // Par défaut : l'agenda de Copine
+    activeAgendaOwner: 'user2', // Par défaut : l'agenda de darling
     activeProfileStats: 'user1'
   };
 
   let fbConfig = {
-    room: 'duo-shaza-copine',
-    apiKey: '',
-    databaseURL: ''
+    room: 'shaza-darling',
+    apiKey: 'AIzaSyPlaceholder',
+    databaseURL: 'https://sante-2003b-default-rtdb.firebaseio.com'
   };
 
   // Base de données par défaut
@@ -31,7 +31,7 @@
     lastUpdated: new Date().toISOString(),
     users: {
       user1: { id: 'user1', name: 'Shaza', color: '#4ade80', logs: [] },
-      user2: { id: 'user2', name: 'Copine', color: '#fb7185', logs: [] }
+      user2: { id: 'user2', name: 'darling', color: '#fb7185', logs: [] }
     },
     health: {
       stickers: [
