@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-18T21:00:00.000Z",
+  "users": {
+    "user1": {
+      "id": "user1",
+      "name": "Shaza",
+      "avatar": "⚡",
+      "color": "#39d353",
+      "logs": []
+    },
+    "user2": {
+      "id": "user2",
+      "name": "Pote",
+      "avatar": "🔥",
+      "color": "#58a6ff",
+      "logs": []
+    }
+  },
+  "settings": {
+    "dailyGoal": 100
+  }
+}
