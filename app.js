@@ -1,74 +1,57 @@
 /**
- * MiniGym & Santé - Application de Duel de Pompes et Agenda Santé Partagé
- * Hébergée sur GitHub Pages + Synchronisation Firebase Realtime Database
+ * Duo & Santé - Suivi de Pompes & Agenda Traitements
+ * Design minimaliste & élégant, sans emojis criards, esprit Duo / Complices.
  */
 
 (function () {
   'use strict';
 
-  // --- Clés LocalStorage ---
-  const STORAGE_KEY = 'minigym_app_data';
-  const CONFIG_KEY = 'minigym_app_config';
-  const FIREBASE_KEY = 'minigym_firebase_config';
+  // --- Clés de Stockage ---
+  const STORAGE_KEY = 'duo_sante_data';
+  const CONFIG_KEY = 'duo_sante_config';
+  const FIREBASE_KEY = 'duo_sante_firebase';
 
-  // --- Configuration Initiale ---
+  // --- Configuration ---
   let config = {
     myIdentity: 'user1', // 'user1' (Shaza) ou 'user2' (Copine)
     activeLoggerUser: 'user1',
-    activeAgendaOwner: 'user2', // Par défaut, on regarde l'agenda de Copine pour sa santé
+    activeAgendaOwner: 'user2', // Par défaut : l'agenda de Copine
     activeProfileStats: 'user1'
   };
 
   let fbConfig = {
-    room: 'minigym-shaza-copine',
+    room: 'duo-shaza-copine',
     apiKey: '',
     databaseURL: ''
   };
 
   // Base de données par défaut
   let appData = {
-    version: 2,
+    version: 3,
     lastUpdated: new Date().toISOString(),
     users: {
-      user1: {
-        id: 'user1',
-        name: 'Shaza',
-        avatar: '⚡',
-        color: '#39d353',
-        logs: []
-      },
-      user2: {
-        id: 'user2',
-        name: 'Copine',
-        avatar: '🌸',
-        color: '#f43f5e',
-        logs: []
-      }
+      user1: { id: 'user1', name: 'Shaza', color: '#4ade80', logs: [] },
+      user2: { id: 'user2', name: 'Copine', color: '#fb7185', logs: [] }
     },
     health: {
       stickers: [
-        { id: 'stk_matin', name: 'Médicament Matin', icon: '💊', color: '#38bdf8' },
-        { id: 'stk_midi', name: 'Médicament Midi', icon: '☀️', color: '#fbbf24' },
-        { id: 'stk_soir', name: 'Médicament Soir', icon: '🌙', color: '#c084fc' },
-        { id: 'stk_soin', name: 'Soin / Repos', icon: '❤️', color: '#f43f5e' }
+        { id: 'stk_matin', name: 'Matin', color: '#38bdf8' },
+        { id: 'stk_midi', name: 'Midi', color: '#fbbf24' },
+        { id: 'stk_soir', name: 'Soir', color: '#a855f7' },
+        { id: 'stk_soin', name: 'Traitement', color: '#e11d48' },
+        { id: 'stk_repos', name: 'Repos', color: '#059669' }
       ],
-      calendar: {
-        user1: {},
-        user2: {}
-      }
+      calendar: { user1: {}, user2: {} }
     }
   };
 
-  // État applicatif
-  let currentMonthDate = new Date(); // Pour la navigation dans l'agenda
-  let activeSelectedSticker = null; // Gommette sélectionnée en main pour le collage
-  let selectedEmojiForNewSticker = '💊';
+  let currentMonthDate = new Date();
+  let activeSelectedSticker = null;
   let firebaseDb = null;
   let isFirebaseConnected = false;
   let lastLoggedId = null;
   let undoTimeout = null;
 
-  // --- Sélecteurs DOM ---
   const $ = (id) => document.getElementById(id);
   const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -82,12 +65,9 @@
     setupNavigation();
     updateUI();
     formatCurrentDate();
-
-    // Définir la valeur de l'input de partage
     generateShareUrl();
   }
 
-  // Vérifier les paramètres de l'URL pour la copine (ex: ?role=copine)
   function checkUrlParams() {
     const urlParams = new URLSearchParams(window.location.search);
     const roleParam = urlParams.get('role');
@@ -96,29 +76,22 @@
       config.activeLoggerUser = 'user2';
       config.activeAgendaOwner = 'user2';
       saveConfig();
-      showToast('🌸 Bienvenue sur ton espace Copine !');
+      showToast('Espace Copine connecté');
     }
   }
 
-  // --- Gestion de la Configuration & Stockage Local ---
   function loadLocalConfig() {
     try {
       const savedConfig = localStorage.getItem(CONFIG_KEY);
-      if (savedConfig) {
-        config = { ...config, ...JSON.parse(savedConfig) };
-      }
+      if (savedConfig) config = { ...config, ...JSON.parse(savedConfig) };
       const savedFb = localStorage.getItem(FIREBASE_KEY);
-      if (savedFb) {
-        fbConfig = { ...fbConfig, ...JSON.parse(savedFb) };
-      }
+      if (savedFb) fbConfig = { ...fbConfig, ...JSON.parse(savedFb) };
 
       $('myIdentitySelect').value = config.myIdentity || 'user1';
-      $('firebaseRoomInput').value = fbConfig.room || 'minigym-shaza-copine';
+      $('firebaseRoomInput').value = fbConfig.room || 'duo-shaza-copine';
       $('firebaseDbUrlInput').value = fbConfig.databaseURL || '';
       $('firebaseApiKeyInput').value = fbConfig.apiKey || '';
-    } catch (e) {
-      console.warn('Erreur chargement config', e);
-    }
+    } catch (e) {}
   }
 
   function saveConfig() {
@@ -134,24 +107,12 @@
         const parsed = JSON.parse(raw);
         if (parsed && parsed.users) {
           appData = parsed;
-          if (!appData.health) {
-            appData.health = {
-              stickers: [
-                { id: 'stk_matin', name: 'Médicament Matin', icon: '💊', color: '#38bdf8' },
-                { id: 'stk_midi', name: 'Médicament Midi', icon: '☀️', color: '#fbbf24' },
-                { id: 'stk_soir', name: 'Médicament Soir', icon: '🌙', color: '#c084fc' },
-                { id: 'stk_soin', name: 'Soin / Repos', icon: '❤️', color: '#f43f5e' }
-              ],
-              calendar: { user1: {}, user2: {} }
-            };
-          }
+          if (!appData.health) appData.health = { stickers: [], calendar: { user1: {}, user2: {} } };
           if (!appData.health.calendar.user1) appData.health.calendar.user1 = {};
           if (!appData.health.calendar.user2) appData.health.calendar.user2 = {};
         }
       }
-    } catch (e) {
-      console.warn('Erreur data locale', e);
-    }
+    } catch (e) {}
   }
 
   function saveLocalData() {
@@ -161,9 +122,9 @@
     } catch (e) {}
   }
 
-  // --- Initialisation Firebase Realtime Database ---
+  // --- Initialisation Firebase Sans Erreurs Bloquantes ---
   function initFirebase() {
-    if (!fbConfig.databaseURL && !fbConfig.apiKey) {
+    if (!fbConfig.databaseURL) {
       updateSyncBadge('offline', 'Mode Local');
       return;
     }
@@ -171,54 +132,54 @@
     try {
       if (window.firebase && firebase.apps && !firebase.apps.length) {
         firebase.initializeApp({
-          apiKey: fbConfig.apiKey,
+          apiKey: fbConfig.apiKey || 'AIzaSyPlaceholder',
           databaseURL: fbConfig.databaseURL
         });
       }
 
       if (window.firebase && firebase.database) {
         firebaseDb = firebase.database();
-        const roomRef = firebaseDb.ref(fbConfig.room || 'minigym-shaza-copine');
+        const roomRef = firebaseDb.ref(fbConfig.room || 'duo-shaza-copine');
 
-        updateSyncBadge('syncing', 'Connexion...');
+        updateSyncBadge('syncing', 'Synchro...');
 
-        // Écoute en temps réel via WebSocket
-        roomRef.on('value', (snapshot) => {
-          const val = snapshot.val();
-          if (val && val.users) {
-            appData = val;
-            saveLocalData();
-            updateUI();
-            updateSyncBadge('synced', 'En direct');
-          } else {
-            // Première initialisation sur Firebase
-            roomRef.set(appData);
-            updateSyncBadge('synced', 'En direct');
+        roomRef.on(
+          'value',
+          (snapshot) => {
+            const val = snapshot.val();
+            if (val && val.users) {
+              appData = val;
+              saveLocalData();
+              updateUI();
+              updateSyncBadge('synced', 'En direct');
+            } else {
+              roomRef.set(appData).catch(() => {});
+              updateSyncBadge('synced', 'En direct');
+            }
+            isFirebaseConnected = true;
+          },
+          (err) => {
+            // Si erreur de permission (règles pas en mode test), on passe en local sans spammer d'alerte rouge
+            console.warn('Firebase sync notice:', err.message);
+            updateSyncBadge('offline', 'Mode Local (Règles)');
           }
-        });
-
-        isFirebaseConnected = true;
+        );
       }
     } catch (err) {
-      console.warn('Erreur connexion Firebase:', err);
+      console.warn('Firebase init:', err);
       updateSyncBadge('offline', 'Mode Local');
     }
   }
 
   function syncDataToFirebase() {
     saveLocalData();
-    if (firebaseDb && fbConfig.room) {
+    if (firebaseDb && fbConfig.room && isFirebaseConnected) {
       updateSyncBadge('syncing', 'Envoi...');
       firebaseDb
         .ref(fbConfig.room)
         .set(appData)
-        .then(() => {
-          updateSyncBadge('synced', 'En direct');
-        })
-        .catch((err) => {
-          console.error(err);
-          updateSyncBadge('offline', 'Erreur Firebase');
-        });
+        .then(() => updateSyncBadge('synced', 'En direct'))
+        .catch(() => updateSyncBadge('offline', 'Mode Local'));
     }
   }
 
@@ -226,59 +187,24 @@
     const dot = $('syncDot');
     const label = $('syncText');
     if (dot && label) {
-      dot.className = 'status-dot ' + status;
+      dot.className = 'sync-dot ' + status;
       label.textContent = text;
     }
   }
 
-  // --- Audio Feedback & Notifications ---
-  function playSound(type = 'rep') {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      const now = ctx.currentTime;
-
-      if (type === 'rep') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.exponentialRampToValueAtTime(660, now + 0.12);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-        osc.start(now);
-        osc.stop(now + 0.22);
-      } else if (type === 'sticker') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now); // Do
-        osc.frequency.setValueAtTime(659.25, now + 0.08); // Mi
-        gain.gain.setValueAtTime(0.18, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-        osc.start(now);
-        osc.stop(now + 0.25);
-      }
-    } catch (e) {}
-  }
-
-  function showToast(msg, isSuccess = true) {
+  function showToast(msg) {
     const t = $('toast');
     t.textContent = msg;
-    t.style.background = isSuccess ? '#238636' : '#da3633';
     t.classList.add('show');
-    setTimeout(() => {
-      t.classList.remove('show');
-    }, 2800);
+    setTimeout(() => t.classList.remove('show'), 2400);
   }
 
   function formatCurrentDate() {
     const d = new Date();
     $('todayDateStr').textContent = d.toLocaleDateString('fr-FR', {
-      weekday: 'long',
       day: 'numeric',
-      month: 'long'
+      month: 'long',
+      year: 'numeric'
     });
   }
 
@@ -290,14 +216,14 @@
     return `${y}-${m}-${d}`;
   }
 
-  // --- Logique Duel & Pompes ---
+  // --- Suivi des Pompes (Duo) ---
   function logPushups(reps, targetUser = null) {
     const userId = targetUser || config.activeLoggerUser || 'user1';
     const user = appData.users[userId];
     if (!user) return;
 
     const logEntry = {
-      id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
       timestamp: Date.now(),
       date: getTodayString(),
       count: parseInt(reps, 10)
@@ -307,11 +233,10 @@
     user.logs.unshift(logEntry);
     lastLoggedId = { userId, logId: logEntry.id };
 
-    playSound('rep');
     updateUI();
     syncDataToFirebase();
 
-    $('undoText').textContent = `${user.avatar} ${user.name} : +${reps} pompes validées`;
+    $('undoText').textContent = `${user.name} : +${reps} répétitions validées`;
     $('undoBar').style.display = 'flex';
     clearTimeout(undoTimeout);
     undoTimeout = setTimeout(() => {
@@ -319,7 +244,7 @@
       lastLoggedId = null;
     }, 8000);
 
-    showToast(`💪 +${reps} pompes pour ${user.name} !`);
+    showToast(`+${reps} pour ${user.name}`);
   }
 
   function undoLastLog() {
@@ -334,7 +259,7 @@
         syncDataToFirebase();
         $('undoBar').style.display = 'none';
         lastLoggedId = null;
-        showToast(`↩ Série de ${removed.count} pompes annulée.`, false);
+        showToast(`Série de ${removed.count} annulée`);
       }
     }
   }
@@ -347,7 +272,7 @@
         user.logs.splice(idx, 1);
         updateUI();
         syncDataToFirebase();
-        showToast('Série supprimée', false);
+        showToast('Série supprimée');
       }
     }
   }
@@ -361,11 +286,10 @@
       .reduce((sum, l) => sum + (l.count || 0), 0);
   }
 
-  // --- Logique Agenda & Gommettes ---
+  // --- Agenda & Gommettes ---
   function getAgendaStickers(userId, dateStr) {
     if (!appData.health || !appData.health.calendar) return [];
-    const userCal = appData.health.calendar[userId] || {};
-    return userCal[dateStr] || [];
+    return appData.health.calendar[userId]?.[dateStr] || [];
   }
 
   function toggleStickerOnDay(userId, dateStr, stickerId) {
@@ -375,23 +299,20 @@
     let dayStickers = appData.health.calendar[userId][dateStr] || [];
     const existingIndex = dayStickers.findIndex((s) => s.stickerId === stickerId);
 
-    const stickerDef = (appData.health.stickers || []).find((s) => s.id === stickerId);
-    const stickerName = stickerDef ? stickerDef.name : 'Gommette';
+    const def = (appData.health.stickers || []).find((s) => s.id === stickerId);
+    const stickerName = def ? def.name : 'Gommette';
 
     if (existingIndex !== -1) {
-      // Décoller la gommette
       dayStickers.splice(existingIndex, 1);
-      showToast(`Gommette "${stickerName}" décollée`);
+      showToast(`Gommette "${stickerName}" retirée`);
     } else {
-      // Coller la gommette
       dayStickers.push({
-        id: 'entry_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        id: 'stk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
         stickerId: stickerId,
         taken: false,
         addedAt: new Date().toISOString()
       });
-      playSound('sticker');
-      showToast(`✨ Gommette "${stickerName}" collée sur le ${formatDateFrench(dateStr)} !`);
+      showToast(`Gommette "${stickerName}" collée sur le ${formatDateFrench(dateStr)}`);
     }
 
     appData.health.calendar[userId][dateStr] = dayStickers;
@@ -404,85 +325,44 @@
     const entry = dayStickers.find((s) => s.id === entryId);
     if (entry) {
       entry.taken = !entry.taken;
-      entry.takenAt = entry.taken ? new Date().toISOString() : null;
-      playSound('sticker');
-      showToast(entry.taken ? '✅ Médicament marqué comme pris !' : '⏳ Statut réinitialisé');
+      showToast(entry.taken ? 'Validé ✓' : 'Statut réinitialisé');
       renderCalendar();
       syncDataToFirebase();
     }
   }
 
-  // --- Rendu & Mise à Jour Globale de l'UI ---
+  // --- Rendu UI Global ---
   function updateUI() {
-    renderDuel();
+    renderDuoSection();
     renderActivityFeed();
     renderCalendar();
     renderProfileStats();
     renderHeatmap();
-    renderWeeklyComparison();
     updateFormFields();
   }
 
-  function renderDuel() {
-    const u1 = appData.users.user1 || { name: 'Shaza', avatar: '⚡' };
-    const u2 = appData.users.user2 || { name: 'Copine', avatar: '🌸' };
+  function renderDuoSection() {
+    const u1 = appData.users.user1 || { name: 'Shaza' };
+    const u2 = appData.users.user2 || { name: 'Copine' };
 
-    $('p1Name').textContent = u1.name;
-    $('p2Name').textContent = u2.name;
-    $('p1Avatar').textContent = u1.avatar;
-    $('p2Avatar').textContent = u2.avatar;
+    $('p1DisplayName').textContent = u1.name;
+    $('p2DisplayName').textContent = u2.name;
 
-    $('selectorP1Name').textContent = u1.name;
-    $('selectorP2Name').textContent = u2.name;
-    $('selectorP1Avatar').textContent = u1.avatar;
-    $('selectorP2Avatar').textContent = u2.avatar;
+    $('selectP1Btn').textContent = u1.name;
+    $('selectP2Btn').textContent = u2.name;
 
-    $('profTabP1').textContent = `${u1.avatar} ${u1.name}`;
-    $('profTabP2').textContent = `${u2.avatar} ${u2.name}`;
+    $('profTabP1').textContent = u1.name;
+    $('profTabP2').textContent = u2.name;
 
-    $('agendaOwnerP1Name').textContent = u1.name;
-    $('agendaOwnerP2Name').textContent = u2.name;
-    $('agendaOwnerP1Avatar').textContent = u1.avatar;
-    $('agendaOwnerP2Avatar').textContent = u2.avatar;
+    $('agendaOwnerP1Btn').textContent = `Agenda de ${u1.name}`;
+    $('agendaOwnerP2Btn').textContent = `Agenda de ${u2.name}`;
 
     const score1 = getTodayCount('user1');
     const score2 = getTodayCount('user2');
 
     $('p1Score').textContent = score1;
     $('p2Score').textContent = score2;
-
-    if (score1 > score2) {
-      $('p1Crown').style.display = 'block';
-      $('p2Crown').style.display = 'none';
-      $('p1Box').classList.add('leading');
-      $('p2Box').classList.remove('leading');
-      $('duelDiff').textContent = `+${score1 - score2} pour ${u1.name}`;
-      $('duelDiff').style.color = '#39d353';
-    } else if (score2 > score1) {
-      $('p1Crown').style.display = 'none';
-      $('p2Crown').style.display = 'block';
-      $('p1Box').classList.remove('leading');
-      $('p2Box').classList.add('leading');
-      $('duelDiff').textContent = `+${score2 - score1} pour ${u2.name}`;
-      $('duelDiff').style.color = '#f43f5e';
-    } else {
-      $('p1Crown').style.display = 'none';
-      $('p2Crown').style.display = 'none';
-      $('p1Box').classList.remove('leading');
-      $('p2Box').classList.remove('leading');
-      $('duelDiff').textContent = score1 === 0 ? 'En attente' : 'Égalité parfaite 🤝';
-      $('duelDiff').style.color = '#e3b341';
-    }
-
-    const total = score1 + score2;
-    if (total === 0) {
-      $('p1Bar').style.width = '50%';
-      $('p2Bar').style.width = '50%';
-    } else {
-      const pct1 = Math.max(10, Math.min(90, Math.round((score1 / total) * 100)));
-      $('p1Bar').style.width = pct1 + '%';
-      $('p2Bar').style.width = 100 - pct1 + '%';
-    }
+    $('duoTotalToday').textContent = score1 + score2;
   }
 
   function renderActivityFeed() {
@@ -492,72 +372,61 @@
 
     const todayStr = getTodayString();
     const todayLogs = allLogs.filter((l) => l.date === todayStr);
-    $('totalLogsToday').textContent = `${todayLogs.length} série${todayLogs.length > 1 ? 's' : ''} aujourd'hui`;
+    $('totalLogsToday').textContent = `${todayLogs.length} série${todayLogs.length > 1 ? 's' : ''}`;
 
     if (allLogs.length === 0) {
       $('activityList').innerHTML = `
-        <div style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 13px;">
-          Aucune pompe enregistrée pour l'instant aujourd'hui.<br>Lance la première série !
+        <div style="text-align: center; color: var(--text-dim); padding: 16px 0; font-size: 12px;">
+          Aucune série enregistrée pour l'instant aujourd'hui.
         </div>`;
       return;
     }
 
     let html = '';
-    allLogs.slice(0, 15).forEach((item) => {
+    allLogs.slice(0, 10).forEach((item) => {
       const user = appData.users[item.userKey];
       const isToday = item.date === todayStr;
       const timeStr = new Date(item.timestamp).toLocaleTimeString('fr-FR', {
         hour: '2-digit',
         minute: '2-digit'
       });
-      const dateLabel = isToday ? `Aujourd'hui à ${timeStr}` : `${item.date} à ${timeStr}`;
+      const dateLabel = isToday ? `${timeStr}` : `${item.date}`;
 
       html += `
-        <div class="activity-item ${item.userKey}">
-          <div class="activity-left">
-            <span style="font-size: 20px;">${user.avatar}</span>
-            <div>
-              <div style="font-weight: 600;">${user.name} <span class="activity-count">+${item.count}</span></div>
-              <div class="activity-time">${dateLabel}</div>
-            </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-inner); padding:8px 12px; border-radius:6px; font-size:12px; border-left: 2px solid ${user.color || '#fff'};">
+          <div>
+            <strong>${user.name}</strong> <span style="color:var(--text-muted); margin-left:6px;">+${item.count}</span>
+            <span style="font-size:10px; color:var(--text-dim); margin-left:8px;">${dateLabel}</span>
           </div>
-          <button class="activity-delete" title="Supprimer" data-user="${item.userKey}" data-id="${item.id}">✕</button>
+          <button style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:12px;" data-user="${item.userKey}" data-id="${item.id}" class="act-del-btn">✕</button>
         </div>`;
     });
 
     $('activityList').innerHTML = html;
 
-    $('activityList').querySelectorAll('.activity-delete').forEach((btn) => {
+    $('activityList').querySelectorAll('.act-del-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        const u = e.currentTarget.getAttribute('data-user');
-        const id = e.currentTarget.getAttribute('data-id');
-        if (confirm('Supprimer cette série ?')) deleteLog(u, id);
+        deleteLog(e.currentTarget.dataset.user, e.currentTarget.dataset.id);
       });
     });
   }
 
-  // --- Rendu du Calendrier 2D et des Gommettes ---
+  // --- Rendu du Calendrier 2D ---
   function renderCalendar() {
     const year = currentMonthDate.getFullYear();
-    const month = currentMonthDate.getMonth(); // 0-indexed (0 = Janvier)
+    const month = currentMonthDate.getMonth();
 
-    // Titre Mois Année
-    const monthTitle = currentMonthDate.toLocaleDateString('fr-FR', {
+    $('calCurrentMonthTitle').textContent = currentMonthDate.toLocaleDateString('fr-FR', {
       month: 'long',
       year: 'numeric'
     });
-    $('calCurrentMonthTitle').textContent = monthTitle;
 
-    // Rendu de la palette de gommettes en haut
     renderStickersRibbon();
 
-    // Calcul des dates du mois
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const totalDaysInMonth = lastDay.getDate(); // 28, 29, 30 ou 31
-
-    // Jour de la semaine du 1er jour (0 = Lundi, 6 = Dimanche)
-    const startDayIndex = (firstDay.getDay() + 6) % 7;
+    const totalDaysInMonth = lastDay.getDate();
+    const startDayIndex = (firstDay.getDay() + 6) % 7; // 0 = Lundi
 
     const grid = $('calendarMonthGrid');
     grid.innerHTML = '';
@@ -565,17 +434,17 @@
     const todayStr = getTodayString();
     const agendaOwner = config.activeAgendaOwner || 'user2';
 
-    // 1. Cases vides du mois précédent
+    // Jours précédents
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = startDayIndex - 1; i >= 0; i--) {
-      const prevDayNum = prevMonthLastDay - i;
+      const prevNum = prevMonthLastDay - i;
       const cell = document.createElement('div');
-      cell.className = 'cal-day-cell other-month';
-      cell.innerHTML = `<div class="cal-day-top"><span>${prevDayNum}</span></div>`;
+      cell.className = 'day-box outside';
+      cell.innerHTML = `<div class="day-box-header"><span>${prevNum}</span></div>`;
       grid.appendChild(cell);
     }
 
-    // 2. Jours du mois en cours (du 1 au 30/31)
+    // Jours du mois (1 à 30/31)
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const dayStr = String(day).padStart(2, '0');
       const monthStr = String(month + 1).padStart(2, '0');
@@ -585,40 +454,33 @@
       const dayStickers = getAgendaStickers(agendaOwner, fullDateStr);
 
       const cell = document.createElement('div');
-      cell.className = `cal-day-cell ${isToday ? 'today' : ''}`;
+      cell.className = `day-box ${isToday ? 'today' : ''}`;
       cell.dataset.date = fullDateStr;
 
       let stickersHtml = '';
       dayStickers.forEach((item) => {
         const def = (appData.health.stickers || []).find((s) => s.id === item.stickerId) || {
           name: 'Gommette',
-          icon: '💊',
           color: '#38bdf8'
         };
-        const checkIcon = item.taken ? '✓' : '';
         stickersHtml += `
-          <div class="day-sticker-tag ${item.taken ? 'taken' : ''}" style="background-color: ${def.color};" title="${def.name}">
-            <span>${def.icon} ${def.name}</span>
-            <span class="day-sticker-check">${checkIcon}</span>
+          <div class="sticker-dot-row ${item.taken ? 'done' : ''}" style="background-color: ${def.color};">
+            <span>${def.name}</span>
+            <span>${item.taken ? '✓' : ''}</span>
           </div>`;
       });
 
       cell.innerHTML = `
-        <div class="cal-day-top">
+        <div class="day-box-header">
           <span>${day}</span>
-          ${isToday ? '<span class="today-pill">Aujourd\'hui</span>' : ''}
+          ${isToday ? '<span class="today-tag">Auj</span>' : ''}
         </div>
-        <div class="cal-day-stickers">
-          ${stickersHtml}
-        </div>`;
+        <div class="day-box-stickers">${stickersHtml}</div>`;
 
-      // Clic sur une case de jour
       cell.addEventListener('click', () => {
         if (activeSelectedSticker) {
-          // Mode collage actif : on colle ou décolle directement la gommette sélectionnée
           toggleStickerOnDay(agendaOwner, fullDateStr, activeSelectedSticker);
         } else {
-          // Mode consultation : ouvre la fenêtre de détail du jour
           openDayDetailModal(agendaOwner, fullDateStr);
         }
       });
@@ -626,14 +488,14 @@
       grid.appendChild(cell);
     }
 
-    // 3. Compléter la dernière ligne si nécessaire
+    // Jours suivants pour compléter la grille
     const totalCells = startDayIndex + totalDaysInMonth;
     const remaining = 7 - (totalCells % 7);
     if (remaining < 7) {
       for (let nextDay = 1; nextDay <= remaining; nextDay++) {
         const cell = document.createElement('div');
-        cell.className = 'cal-day-cell other-month';
-        cell.innerHTML = `<div class="cal-day-top"><span>${nextDay}</span></div>`;
+        cell.className = 'day-box outside';
+        cell.innerHTML = `<div class="day-box-header"><span>${nextDay}</span></div>`;
         grid.appendChild(cell);
       }
     }
@@ -645,26 +507,24 @@
 
     const stickers = appData.health.stickers || [];
     stickers.forEach((stk) => {
-      const badge = document.createElement('div');
-      badge.className = `sticker-badge ${activeSelectedSticker === stk.id ? 'selected' : ''}`;
-      badge.style.backgroundColor = stk.color;
-      badge.innerHTML = `<span>${stk.icon}</span><span>${stk.name}</span>`;
+      const chip = document.createElement('div');
+      chip.className = `swatch-chip ${activeSelectedSticker === stk.id ? 'active-stamp' : ''}`;
+      chip.style.backgroundColor = stk.color;
+      chip.textContent = stk.name;
 
-      badge.addEventListener('click', () => {
+      chip.addEventListener('click', () => {
         if (activeSelectedSticker === stk.id) {
-          // Désélectionner
           activeSelectedSticker = null;
           $('activeStickerAlert').style.display = 'none';
         } else {
-          // Sélectionner pour collage
           activeSelectedSticker = stk.id;
           $('activeStickerAlert').style.display = 'flex';
-          $('activeStickerAlertText').textContent = `🎨 Gommette "${stk.name}" en main ! Clique sur les jours pour la coller.`;
+          $('activeStickerAlertText').textContent = `Gommette "${stk.name}" sélectionnée : clique sur les jours du calendrier.`;
         }
         renderStickersRibbon();
       });
 
-      ribbon.appendChild(badge);
+      ribbon.appendChild(chip);
     });
   }
 
@@ -674,66 +534,55 @@
     list.innerHTML = '';
 
     const dayStickers = getAgendaStickers(userId, dateStr);
-    const user = appData.users[userId];
 
     if (dayStickers.length === 0) {
-      list.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 12px 0;">Aucune gommette pour cette journée.</div>`;
+      list.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 10px 0; font-size: 11px;">Aucune gommette sur ce jour.</div>`;
     } else {
       dayStickers.forEach((entry) => {
         const def = (appData.health.stickers || []).find((s) => s.id === entry.stickerId) || {
           name: 'Gommette',
-          icon: '💊',
           color: '#38bdf8'
         };
 
-        const item = document.createElement('div');
-        item.style.display = 'flex';
-        item.style.alignItems = 'center';
-        item.style.justifyContent = 'space-between';
-        item.style.background = '#21262d';
-        item.style.padding = '8px 12px';
-        item.style.borderRadius = '8px';
-        item.style.borderLeft = `4px solid ${def.color}`;
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        row.style.background = 'var(--card-inner)';
+        row.style.padding = '8px 10px';
+        row.style.borderRadius = '6px';
+        row.style.borderLeft = `3px solid ${def.color}`;
 
-        item.innerHTML = `
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:18px;">${def.icon}</span>
-            <div>
-              <div style="font-weight:600; font-size:13px; ${entry.taken ? 'text-decoration:line-through; opacity:0.6;' : ''}">${def.name}</div>
-              <div style="font-size:10px; color:var(--text-muted);">${entry.taken ? 'Pris ✅' : 'À prendre ⏳'}</div>
-            </div>
-          </div>
+        row.innerHTML = `
+          <div style="font-size:12px; font-weight:600; ${entry.taken ? 'text-decoration:line-through; opacity:0.5;' : ''}">${def.name}</div>
           <div style="display:flex; gap:6px;">
-            <button class="btn" style="padding:4px 8px; font-size:11px;" id="toggleTaken_${entry.id}">
-              ${entry.taken ? 'Annuler' : 'Marquer Pris ✅'}
+            <button class="btn-outline" style="padding:3px 8px; font-size:10px;" id="toggleDone_${entry.id}">
+              ${entry.taken ? 'Annuler' : 'Valider ✓'}
             </button>
-            <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" id="deleteStk_${entry.id}">
-              🗑️
-            </button>
+            <button class="icon-btn" style="padding:3px 6px; font-size:10px;" id="delStk_${entry.id}">✕</button>
           </div>`;
 
-        list.appendChild(item);
+        list.appendChild(row);
 
-        item.querySelector(`#toggleTaken_${entry.id}`).addEventListener('click', () => {
+        row.querySelector(`#toggleDone_${entry.id}`).addEventListener('click', () => {
           toggleStickerTaken(userId, dateStr, entry.id);
           openDayDetailModal(userId, dateStr);
         });
 
-        item.querySelector(`#deleteStk_${entry.id}`).addEventListener('click', () => {
+        row.querySelector(`#delStk_${entry.id}`).addEventListener('click', () => {
           toggleStickerOnDay(userId, dateStr, entry.stickerId);
           openDayDetailModal(userId, dateStr);
         });
       });
     }
 
-    // Palette rapide pour ajouter une gommette directement
     const addList = $('dayDetailAddList');
     addList.innerHTML = '';
     (appData.health.stickers || []).forEach((stk) => {
       const btn = document.createElement('button');
-      btn.className = 'sticker-badge';
+      btn.className = 'swatch-chip';
       btn.style.backgroundColor = stk.color;
-      btn.innerHTML = `${stk.icon} ${stk.name}`;
+      btn.textContent = `+ ${stk.name}`;
       btn.addEventListener('click', () => {
         toggleStickerOnDay(userId, dateStr, stk.id);
         openDayDetailModal(userId, dateStr);
@@ -744,7 +593,7 @@
     $('dayDetailModal').classList.add('open');
   }
 
-  // --- Statistiques & Heatmap Style GitHub ---
+  // --- Statistiques & Heatmap Carrés Verts ---
   function calculateUserStats(userId) {
     const user = appData.users[userId] || { logs: [] };
     const logs = user.logs || [];
@@ -760,7 +609,6 @@
     for (const d in dayMap) {
       if (dayMap[d] > bestDay) bestDay = dayMap[d];
     }
-
     const avg = activeDays > 0 ? Math.round(total / activeDays) : 0;
 
     let streak = 0;
@@ -782,26 +630,23 @@
       }
     }
 
-    return { total, bestDay, avg, streak, dayMap, activeDays };
+    return { total, bestDay, avg, streak, dayMap };
   }
 
   function renderProfileStats() {
-    const profileView = config.activeProfileStats || 'user1';
-    const stats = calculateUserStats(profileView);
-    const user = appData.users[profileView];
+    const pKey = config.activeProfileStats || 'user1';
+    const stats = calculateUserStats(pKey);
 
     $('kpiTotal').textContent = stats.total.toLocaleString('fr-FR');
-    $('kpiTotalSub').textContent = `par ${user.name}`;
     $('kpiStreak').textContent = `${stats.streak} j`;
-    $('kpiStreakSub').textContent = stats.streak > 0 ? 'En plein feu ! 🔥' : 'Pas de série active';
     $('kpiBest').textContent = stats.bestDay.toLocaleString('fr-FR');
     $('kpiAvg').textContent = `${stats.avg} / j`;
   }
 
   function renderHeatmap() {
-    const profileView = config.activeProfileStats || 'user1';
-    const stats = calculateUserStats(profileView);
-    const user = appData.users[profileView];
+    const pKey = config.activeProfileStats || 'user1';
+    const stats = calculateUserStats(pKey);
+    const user = appData.users[pKey];
     const dayMap = stats.dayMap;
 
     const today = new Date();
@@ -815,13 +660,13 @@
     $('heatmapGrid').innerHTML = '';
     $('heatmapMonths').innerHTML = '';
 
-    let totalYearPushups = 0;
+    let totalYear = 0;
     const monthsRecorded = [];
 
     const curDate = new Date(startDate);
     for (let w = 0; w < 52; w++) {
       const weekCol = document.createElement('div');
-      weekCol.className = 'heatmap-week';
+      weekCol.className = 'heatmap-col';
 
       for (let d = 0; d < 7; d++) {
         const y = curDate.getFullYear();
@@ -831,7 +676,7 @@
 
         const isFuture = curDate > today;
         const count = isFuture ? 0 : dayMap[dateStr] || 0;
-        totalYearPushups += count;
+        totalYear += count;
 
         let level = 0;
         if (count >= 100) level = 4;
@@ -839,18 +684,22 @@
         else if (count >= 25) level = 2;
         else if (count >= 1) level = 1;
 
-        const cell = document.createElement('div');
-        cell.className = 'heatmap-cell';
-        cell.dataset.level = isFuture ? '0' : level;
-        cell.dataset.date = dateStr;
-        cell.dataset.count = count;
+        const square = document.createElement('div');
+        square.className = 'heatmap-square';
+        square.dataset.level = isFuture ? '0' : level;
+        square.dataset.date = dateStr;
+        square.dataset.count = count;
 
         if (!isFuture) {
-          cell.addEventListener('mouseenter', showHeatmapTooltip);
-          cell.addEventListener('mouseleave', hideHeatmapTooltip);
-          cell.addEventListener('click', () => {
-            showToast(`${count} pompes le ${formatDateFrench(dateStr)}`);
+          square.addEventListener('mouseenter', (e) => {
+            const tip = $('heatmap-tooltip');
+            tip.textContent = `${count} pompes le ${formatDateFrench(dateStr)}`;
+            tip.style.display = 'block';
+            const rect = e.currentTarget.getBoundingClientRect();
+            tip.style.left = `${rect.left + rect.width / 2}px`;
+            tip.style.top = `${rect.top - 6}px`;
           });
+          square.addEventListener('mouseleave', () => ($('heatmap-tooltip').style.display = 'none'));
         }
 
         if (d === 0 && curDate.getDate() <= 7) {
@@ -858,7 +707,7 @@
           monthsRecorded.push({ weekIndex: w, name: monthName.replace('.', '') });
         }
 
-        weekCol.appendChild(cell);
+        weekCol.appendChild(square);
         curDate.setDate(curDate.getDate() + 1);
       }
 
@@ -869,80 +718,18 @@
       const span = document.createElement('span');
       span.textContent = m.name;
       span.style.position = 'absolute';
-      span.style.left = `${m.weekIndex * 14}px`;
+      span.style.left = `${m.weekIndex * 13}px`;
       span.style.textTransform = 'capitalize';
       $('heatmapMonths').appendChild(span);
     });
 
-    $('heatmapTotalTitle').textContent = `${totalYearPushups.toLocaleString('fr-FR')} pompes sur la dernière année (${user.name})`;
-  }
-
-  function showHeatmapTooltip(e) {
-    const dateStr = e.currentTarget.dataset.date;
-    const count = parseInt(e.currentTarget.dataset.count, 10);
-    const rect = e.currentTarget.getBoundingClientRect();
-
-    const formattedDate = formatDateFrench(dateStr);
-    const countText = count === 0 ? 'Aucune pompe' : `${count} pompe${count > 1 ? 's' : ''}`;
-
-    const tip = $('heatmap-tooltip');
-    tip.innerHTML = `<strong>${countText}</strong> le ${formattedDate}`;
-    tip.style.display = 'block';
-    tip.style.left = `${rect.left + rect.width / 2}px`;
-    tip.style.top = `${rect.top - 8}px`;
-  }
-
-  function hideHeatmapTooltip() {
-    $('heatmap-tooltip').style.display = 'none';
-  }
-
-  function renderWeeklyComparison() {
-    const stats1 = calculateUserStats('user1');
-    const stats2 = calculateUserStats('user2');
-
-    let html = '';
-    const today = new Date();
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const dayNum = String(d.getDate()).padStart(2, '0');
-      const dateStr = `${y}-${m}-${dayNum}`;
-
-      const c1 = stats1.dayMap[dateStr] || 0;
-      const c2 = stats2.dayMap[dateStr] || 0;
-      const maxVal = Math.max(c1, c2, 1);
-
-      const dayName =
-        i === 0
-          ? "Aujourd'hui"
-          : i === 1
-          ? 'Hier'
-          : d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
-
-      html += `
-        <div style="background: #21262d; border-radius: 8px; padding: 8px 12px; font-size: 12px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-weight: 600;">
-            <span>${dayName}</span>
-            <span style="color: var(--text-muted);">${c1} vs ${c2}</span>
-          </div>
-          <div style="display: flex; gap: 4px; height: 6px; background: #161b22; border-radius: 4px; overflow: hidden;">
-            <div style="background: var(--p1-color); width: ${(c1 / maxVal) * 50}%; transition: width 0.3s;"></div>
-            <div style="background: var(--p2-color); width: ${(c2 / maxVal) * 50}%; transition: width 0.3s;"></div>
-          </div>
-        </div>`;
-    }
-
-    $('weeklyComparison').innerHTML = html;
+    $('heatmapTotalTitle').textContent = `${totalYear.toLocaleString('fr-FR')} pompes sur l'année (${user.name})`;
   }
 
   function formatDateFrench(dateStr) {
     const [y, m, d] = dateStr.split('-');
     const date = new Date(y, m - 1, d);
     return date.toLocaleDateString('fr-FR', {
-      weekday: 'short',
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -951,24 +738,18 @@
 
   function updateFormFields() {
     $('p1NameInput').value = appData.users.user1?.name || 'Shaza';
-    $('p1AvatarInput').value = appData.users.user1?.avatar || '⚡';
     $('p2NameInput').value = appData.users.user2?.name || 'Copine';
-    $('p2AvatarInput').value = appData.users.user2?.avatar || '🌸';
   }
 
   function generateShareUrl() {
     const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?role=copine`;
-    $('shareUrlInput').value = shareUrl;
+    $('shareUrlInput').value = `${baseUrl}?role=copine`;
   }
 
   // --- Gestion des Événements ---
   function setupEventListeners() {
-    // Boutons de pompes
-    $$('.rep-btn[data-reps]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        logPushups(btn.dataset.reps);
-      });
+    $$('.rep-chip[data-reps]').forEach((chip) => {
+      chip.addEventListener('click', () => logPushups(chip.dataset.reps));
     });
 
     $('selectP1Btn').addEventListener('click', () => {
@@ -985,16 +766,13 @@
 
     $('undoBtn').addEventListener('click', undoLastLog);
 
-    // Modal série personnalisée
     $('customRepsBtn').addEventListener('click', () => {
       $('customModal').classList.add('open');
       $('customRepsInput').value = '';
       $('customRepsInput').focus();
     });
 
-    $('cancelCustomBtn').addEventListener('click', () => {
-      $('customModal').classList.remove('open');
-    });
+    $('cancelCustomBtn').addEventListener('click', () => $('customModal').classList.remove('open'));
 
     $('confirmCustomBtn').addEventListener('click', () => {
       const val = parseInt($('customRepsInput').value, 10);
@@ -1004,7 +782,7 @@
       }
     });
 
-    // Navigation Calendrier (Mois précédent / suivant)
+    // Navigation Calendrier
     $('calPrevMonthBtn').addEventListener('click', () => {
       currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
       renderCalendar();
@@ -1020,7 +798,6 @@
       renderCalendar();
     });
 
-    // Switcher propriétaire d'agenda (Agenda Copine vs Agenda Shaza)
     $('agendaOwnerP2Btn').addEventListener('click', () => {
       config.activeAgendaOwner = 'user2';
       $('agendaOwnerP2Btn').classList.add('active');
@@ -1035,7 +812,6 @@
       renderCalendar();
     });
 
-    // Arrêter le mode collage
     $('stopPlacingStickerBtn').addEventListener('click', () => {
       activeSelectedSticker = null;
       $('activeStickerAlert').style.display = 'none';
@@ -1052,43 +828,26 @@
       $('newStickerModal').classList.remove('open');
     });
 
-    $$('.emoji-choice').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        selectedEmojiForNewSticker = e.currentTarget.dataset.emoji;
-        $$('.emoji-choice').forEach((b) => (b.style.borderColor = 'transparent'));
-        e.currentTarget.style.borderColor = '#58a6ff';
-      });
-    });
-
     $('saveNewStickerBtn').addEventListener('click', () => {
       const name = $('newStickerName').value.trim();
       const color = $('newStickerColor').value;
-      if (!name) {
-        alert('Veuillez entrer un nom pour la gommette.');
-        return;
-      }
-
-      const newSticker = {
-        id: 'stk_' + Date.now(),
-        name: name,
-        icon: selectedEmojiForNewSticker,
-        color: color
-      };
+      if (!name) return;
 
       if (!appData.health) appData.health = { stickers: [], calendar: {} };
       if (!appData.health.stickers) appData.health.stickers = [];
-      appData.health.stickers.push(newSticker);
+      appData.health.stickers.push({
+        id: 'stk_' + Date.now(),
+        name: name,
+        color: color
+      });
 
       renderStickersRibbon();
       syncDataToFirebase();
       $('newStickerModal').classList.remove('open');
-      showToast(`✨ Gommette "${name}" créée !`);
+      showToast(`Gommette "${name}" créée`);
     });
 
-    // Modal Détail Jour
-    $('closeDayDetailModalBtn').addEventListener('click', () => {
-      $('dayDetailModal').classList.remove('open');
-    });
+    $('closeDayDetailModalBtn').addEventListener('click', () => $('dayDetailModal').classList.remove('open'));
 
     // Modal Partage
     $('openShareModalBtn').addEventListener('click', () => {
@@ -1096,20 +855,15 @@
       $('shareModal').classList.add('open');
     });
 
-    $('closeShareModalBtn').addEventListener('click', () => {
-      $('shareModal').classList.remove('open');
-    });
+    $('closeShareModalBtn').addEventListener('click', () => $('shareModal').classList.remove('open'));
 
     $('copyShareUrlBtn').addEventListener('click', () => {
-      const copyText = $('shareUrlInput');
-      copyText.select();
-      copyText.setSelectionRange(0, 99999);
-      navigator.clipboard.writeText(copyText.value).then(() => {
-        showToast('📋 Lien copié dans le presse-papier !');
-      });
+      const input = $('shareUrlInput');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => showToast('Lien copié dans le presse-papier'));
     });
 
-    // Profil Switcher dans Stats
+    // Stats Switch
     $('profTabP1').addEventListener('click', () => {
       config.activeProfileStats = 'user1';
       $('profTabP1').classList.add('active');
@@ -1126,39 +880,32 @@
       renderHeatmap();
     });
 
-    // Paramètres Profils
+    // Sauvegarde Profils
     $('saveProfilesBtn').addEventListener('click', () => {
       appData.users.user1.name = $('p1NameInput').value.trim() || 'Shaza';
-      appData.users.user1.avatar = $('p1AvatarInput').value.trim() || '⚡';
       appData.users.user2.name = $('p2NameInput').value.trim() || 'Copine';
-      appData.users.user2.avatar = $('p2AvatarInput').value.trim() || '🌸';
       updateUI();
       syncDataToFirebase();
-      showToast('Profils mis à jour !');
+      showToast('Prénoms enregistrés');
     });
 
-    // Paramètres Firebase
+    // Sauvegarde Firebase
     $('saveFirebaseBtn').addEventListener('click', () => {
-      fbConfig.room = $('firebaseRoomInput').value.trim() || 'minigym-shaza-copine';
+      fbConfig.room = $('firebaseRoomInput').value.trim() || 'duo-shaza-copine';
       fbConfig.databaseURL = $('firebaseDbUrlInput').value.trim();
       fbConfig.apiKey = $('firebaseApiKeyInput').value.trim();
       localStorage.setItem(FIREBASE_KEY, JSON.stringify(fbConfig));
       initFirebase();
-      showToast('Configuration Firebase enregistrée !');
-    });
-
-    $('testSyncBtn').addEventListener('click', () => {
-      initFirebase();
       syncDataToFirebase();
+      showToast('Configuration enregistrée');
     });
 
-    // Sauvegarde Export / Import
+    // Export / Import
     $('exportDataBtn').addEventListener('click', () => {
-      const dataStr =
-        'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(appData, null, 2));
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(appData, null, 2));
       const a = document.createElement('a');
       a.setAttribute('href', dataStr);
-      a.setAttribute('download', `minigym_sante_${getTodayString()}.json`);
+      a.setAttribute('download', `duo_data_${getTodayString()}.json`);
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1177,32 +924,19 @@
             appData = parsed;
             updateUI();
             syncDataToFirebase();
-            showToast('Données importées avec succès !');
+            showToast('Données importées');
           }
-        } catch (err) {
-          alert('Fichier JSON invalide.');
-        }
+        } catch (err) {}
       };
       reader.readAsText(file);
     });
-
-    $('resetDataBtn').addEventListener('click', () => {
-      if (confirm('Voulez-vous vraiment effacer les pompes et réinitialiser ?')) {
-        appData.users.user1.logs = [];
-        appData.users.user2.logs = [];
-        updateUI();
-        syncDataToFirebase();
-        showToast('Données réinitialisées.', false);
-      }
-    });
   }
 
-  // --- Navigation par Onglets ---
   function setupNavigation() {
-    $$('.nav-btn').forEach((btn) => {
+    $$('.nav-tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const targetTab = btn.dataset.tab;
-        $$('.nav-btn').forEach((b) => b.classList.remove('active'));
+        $$('.nav-tab-btn').forEach((b) => b.classList.remove('active'));
         $$('.tab-view').forEach((v) => v.classList.remove('active'));
 
         btn.classList.add('active');
