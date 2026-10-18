@@ -19,5 +19,34 @@
   },
   "settings": {
     "dailyGoal": 100
+  },
+  "health": {
+    "stickers": [
+      {
+        "id": "stk_matin",
+        "name": "Médicament Matin",
+        "icon": "💊",
+        "color": "#38bdf8"
+      },
+      {
+        "id": "stk_midi",
+        "name": "Médicament Midi",
+        "icon": "☀️",
+        "color": "#fbbf24"
+      },
+      {
+        "id": "stk_soir",
+        "name": "Médicament Soir",
+        "icon": "🌙",
+        "color": "#c084fc"
+      },
+      {
+        "id": "stk_soin",
+        "name": "Soin / Repos",
+        "icon": "❤️",
+        "color": "#f43f5e"
+      }
+    ],
+    "calendar": {}
   }
 }

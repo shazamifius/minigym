@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>MiniGym - Duel & Suivi de Pompes</title>
+  <title>MiniGym & Santé - Duel & Agenda Partagé</title>
   <meta name="theme-color" content="#0d1117">
-  <meta name="description" content="Application privée de suivi de pompes entre potes avec heatmap de contributions style GitHub.">
+  <meta name="description" content="Application de duel de pompes avec carrés verts style GitHub et agenda santé de gommettes en temps réel.">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💪</text></svg>">
+
+  <!-- Firebase App & Realtime Database SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <style>
     :root {
       --bg: #0d1117;
@@ -20,7 +25,7 @@
       --accent-hover: #2ea043;
       --accent-glow: rgba(57, 211, 83, 0.25);
       --p1-color: #39d353;
-      --p2-color: #58a6ff;
+      --p2-color: #f43f5e;
       --danger: #f85149;
       --gh-l0: #161b22;
       --gh-l1: #0e4429;
@@ -45,19 +50,18 @@
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
-      padding-bottom: 80px;
+      padding-bottom: 85px;
     }
 
-    /* Top Navigation Header */
     header {
-      background-color: rgba(22, 27, 34, 0.85);
+      background-color: rgba(22, 27, 34, 0.92);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--card-border);
       position: sticky;
       top: 0;
       z-index: 100;
-      padding: 12px 16px;
+      padding: 10px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -70,40 +74,49 @@
     }
 
     .brand-icon {
-      font-size: 24px;
+      font-size: 22px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: rgba(57, 211, 83, 0.15);
       border: 1px solid rgba(57, 211, 83, 0.3);
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
     }
 
     .brand-text h1 {
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 700;
-      letter-spacing: -0.3px;
       display: flex;
       align-items: center;
       gap: 6px;
-    }
-
-    .brand-badge {
-      font-size: 11px;
-      background: #21262d;
-      color: #8b949e;
-      padding: 2px 6px;
-      border-radius: 20px;
-      border: 1px solid var(--card-border);
-      font-weight: 500;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .share-quick-btn {
+      background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(35, 134, 54, 0.4);
+      transition: all 0.2s;
+    }
+
+    .share-quick-btn:hover {
+      transform: translateY(-1px);
     }
 
     .sync-status {
@@ -113,79 +126,70 @@
       background: #21262d;
       border: 1px solid var(--card-border);
       border-radius: 20px;
-      padding: 4px 10px;
-      font-size: 12px;
+      padding: 5px 9px;
+      font-size: 11px;
       color: var(--text-muted);
       cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .sync-status:hover {
-      background: #30363d;
-      color: var(--text-main);
     }
 
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: #8b949e;
     }
 
-    .status-dot.synced { background: #39d353; box-shadow: 0 0 8px #39d353; }
+    .status-dot.synced { background: #39d353; box-shadow: 0 0 6px #39d353; }
     .status-dot.syncing { background: #e3b341; animation: pulse 1s infinite alternate; }
-    .status-dot.error { background: #f85149; }
+    .status-dot.offline { background: #8b949e; }
 
     @keyframes pulse {
       from { opacity: 0.4; }
       to { opacity: 1; }
     }
 
-    /* Main Container */
     main {
       width: 100%;
-      max-width: 680px;
+      max-width: 720px;
       margin: 0 auto;
-      padding: 16px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
-    /* Cards */
     .card {
       background-color: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      padding: 18px;
+      padding: 16px;
       position: relative;
     }
 
     .card-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    /* Duel Scoreboard Card */
+    /* Duel Card */
     .duel-card {
-      background: linear-gradient(180deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.95) 100%);
+      background: linear-gradient(180deg, rgba(22, 27, 34, 0.98) 0%, rgba(13, 17, 23, 0.98) 100%);
       border: 1px solid var(--card-border);
-      overflow: hidden;
     }
 
     .duel-versus {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 14px;
     }
 
     .player-box {
@@ -193,7 +197,7 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
-      padding: 12px 8px;
+      padding: 10px 6px;
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid transparent;
@@ -202,21 +206,20 @@
 
     .player-box.leading {
       border-color: rgba(57, 211, 83, 0.4);
-      background: rgba(57, 211, 83, 0.05);
+      background: rgba(57, 211, 83, 0.06);
     }
 
     .player-avatar {
-      font-size: 32px;
-      margin-bottom: 6px;
+      font-size: 30px;
+      margin-bottom: 4px;
       position: relative;
     }
 
     .crown-badge {
       position: absolute;
-      top: -12px;
+      top: -10px;
       right: -8px;
-      font-size: 18px;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      font-size: 16px;
       animation: bounce 2s infinite ease-in-out;
     }
 
@@ -226,13 +229,13 @@
     }
 
     .player-name {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .player-score {
-      font-size: 36px;
+      font-size: 34px;
       font-weight: 800;
       line-height: 1;
       letter-spacing: -1px;
@@ -241,7 +244,7 @@
     .player-score-sub {
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 4px;
+      margin-top: 2px;
     }
 
     .vs-divider {
@@ -252,12 +255,12 @@
     }
 
     .vs-badge {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
       color: #8b949e;
       background: #21262d;
-      padding: 4px 8px;
-      border-radius: 8px;
+      padding: 3px 7px;
+      border-radius: 6px;
       border: 1px solid var(--card-border);
     }
 
@@ -268,10 +271,9 @@
       white-space: nowrap;
     }
 
-    /* Duel Progress Bar */
     .duel-bar-container {
       width: 100%;
-      height: 10px;
+      height: 8px;
       background: #21262d;
       border-radius: 99px;
       overflow: hidden;
@@ -291,19 +293,14 @@
       transition: width 0.4s ease;
     }
 
-    /* Quick Logging Buttons */
-    .logger-section {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
+    /* Pushups Logger */
     .actor-selector {
       display: flex;
       background: #21262d;
       padding: 4px;
       border-radius: 10px;
       gap: 4px;
+      margin-bottom: 12px;
     }
 
     .actor-btn {
@@ -312,7 +309,7 @@
       border: none;
       color: var(--text-muted);
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       padding: 8px 12px;
       border-radius: 8px;
       cursor: pointer;
@@ -341,17 +338,15 @@
       color: var(--text-main);
       font-size: 20px;
       font-weight: 700;
-      padding: 16px 8px;
+      padding: 14px 6px;
       border-radius: 12px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-      transition: all 0.15s ease;
-      position: relative;
-      overflow: hidden;
+      gap: 3px;
+      transition: all 0.12s ease;
     }
 
     .rep-btn:active {
@@ -361,7 +356,7 @@
     }
 
     .rep-btn-sub {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 500;
       color: var(--text-muted);
     }
@@ -371,15 +366,10 @@
       background: rgba(35, 134, 54, 0.15);
       border-color: rgba(46, 160, 67, 0.4);
       color: #39d353;
-      padding: 12px;
-      font-size: 15px;
+      padding: 11px;
+      font-size: 14px;
     }
 
-    .rep-btn.custom:hover {
-      background: rgba(35, 134, 54, 0.25);
-    }
-
-    /* Undo Action Bar */
     .undo-bar {
       display: none;
       align-items: center;
@@ -402,12 +392,11 @@
       cursor: pointer;
     }
 
-    /* Activity Feed */
     .activity-list {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 280px;
+      max-height: 240px;
       overflow-y: auto;
     }
 
@@ -415,7 +404,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 12px;
+      padding: 8px 12px;
       background: #21262d;
       border-radius: 8px;
       border-left: 3px solid var(--p1-color);
@@ -434,7 +423,7 @@
 
     .activity-count {
       font-weight: 800;
-      font-size: 15px;
+      font-size: 14px;
       color: var(--text-main);
     }
 
@@ -450,20 +439,254 @@
       cursor: pointer;
       font-size: 14px;
       padding: 4px;
-      border-radius: 4px;
     }
 
     .activity-delete:hover {
       color: var(--danger);
-      background: rgba(248, 81, 73, 0.1);
     }
 
-    /* Profile & Heatmap Tab */
+    /* ========================================================
+       PLANNING 2D & GOMMETTES DE SANTÉ EN TEMPS RÉEL
+       ======================================================== */
+    .calendar-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cal-nav-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cal-title {
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .cal-nav-btn {
+      background: #21262d;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .agenda-owner-selector {
+      display: flex;
+      background: #21262d;
+      padding: 3px;
+      border-radius: 8px;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .agenda-owner-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .agenda-owner-btn.active {
+      background: #30363d;
+      color: var(--text-main);
+    }
+
+    .stickers-box {
+      background: #21262d;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stickers-box-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .stickers-ribbon {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sticker-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+      transition: all 0.15s ease;
+      border: 2px solid transparent;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .sticker-badge:active { transform: scale(0.95); }
+
+    .sticker-badge.selected {
+      border-color: #fff;
+      box-shadow: 0 0 14px #fff, 0 4px 10px rgba(0,0,0,0.5);
+      transform: translateY(-2px);
+      animation: floatBadge 1.5s infinite ease-in-out;
+    }
+
+    @keyframes floatBadge {
+      0%, 100% { transform: translateY(-2px); }
+      50% { transform: translateY(-5px); }
+    }
+
+    .active-sticker-alert {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .calendar-weekdays-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .calendar-month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .cal-day-cell {
+      min-height: 72px;
+      background: #161b22;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .cal-day-cell:hover {
+      background: #21262d;
+      border-color: #58a6ff;
+    }
+
+    .cal-day-cell.other-month {
+      opacity: 0.25;
+      background: #0d1117;
+    }
+
+    .cal-day-cell.today {
+      border: 2px solid #38bdf8;
+      background: rgba(56, 189, 248, 0.06);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .cal-day-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .cal-day-cell.today .cal-day-top {
+      color: #38bdf8;
+    }
+
+    .today-pill {
+      font-size: 8px;
+      background: #38bdf8;
+      color: #000;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-weight: 800;
+    }
+
+    .cal-day-stickers {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .day-sticker-tag {
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .day-sticker-tag.taken {
+      opacity: 0.6;
+      text-decoration: line-through;
+    }
+
+    /* Profil & Heatmap */
     .profile-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .profile-tabs {
@@ -479,10 +702,10 @@
       border: none;
       color: var(--text-muted);
       font-weight: 600;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .profile-tab-btn.active {
@@ -490,63 +713,42 @@
       color: var(--text-main);
     }
 
-    /* Stat KPI Grid */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .kpi-box {
       background: #21262d;
       border: 1px solid var(--card-border);
       border-radius: 10px;
-      padding: 14px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     .kpi-label {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
     .kpi-value {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       color: var(--text-main);
     }
 
     .kpi-sub {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-muted);
-    }
-
-    /* GitHub Contribution Heatmap */
-    .heatmap-card {
-      overflow: hidden;
-    }
-
-    .heatmap-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .heatmap-total-title {
-      font-size: 15px;
-      font-weight: 600;
     }
 
     .heatmap-scroll {
       overflow-x: auto;
-      padding-bottom: 8px;
+      padding-bottom: 6px;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -599,8 +801,7 @@
       background-color: var(--gh-l0);
       border: 1px solid rgba(255, 255, 255, 0.05);
       cursor: pointer;
-      transition: transform 0.1s, outline 0.1s;
-      position: relative;
+      transition: transform 0.1s;
     }
 
     .heatmap-cell:hover {
@@ -615,7 +816,6 @@
     .heatmap-cell[data-level="3"] { background-color: #26a641; }
     .heatmap-cell[data-level="4"] { background-color: #39d353; box-shadow: 0 0 4px rgba(57, 211, 83, 0.6); }
 
-    /* Heatmap Legend */
     .heatmap-footer {
       display: flex;
       justify-content: flex-end;
@@ -638,7 +838,6 @@
       border-radius: 2px;
     }
 
-    /* Tooltip */
     #heatmap-tooltip {
       position: fixed;
       background: #24292f;
@@ -655,12 +854,12 @@
       white-space: nowrap;
     }
 
-    /* Settings Tab */
+    /* Form & Buttons */
     .settings-group {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .form-row {
@@ -680,7 +879,7 @@
       border: 1px solid var(--card-border);
       border-radius: 8px;
       color: var(--text-main);
-      padding: 10px 12px;
+      padding: 9px 12px;
       font-size: 14px;
       font-family: inherit;
       width: 100%;
@@ -689,7 +888,6 @@
     .form-input:focus {
       outline: none;
       border-color: #58a6ff;
-      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
     }
 
     .btn {
@@ -697,52 +895,22 @@
       border: 1px solid var(--card-border);
       color: var(--text-main);
       font-weight: 600;
-      font-size: 14px;
-      padding: 10px 16px;
+      font-size: 13px;
+      padding: 9px 14px;
       border-radius: 8px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       transition: all 0.2s;
     }
 
-    .btn:hover {
-      background: #30363d;
-    }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: #238636; border-color: rgba(240, 246, 252, 0.1); color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-danger { background: rgba(248, 81, 73, 0.15); border-color: rgba(248, 81, 73, 0.4); color: #f85149; }
 
-    .btn-primary {
-      background: #238636;
-      border-color: rgba(240, 246, 252, 0.1);
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      background: #2ea043;
-    }
-
-    .btn-danger {
-      background: rgba(248, 81, 73, 0.15);
-      border-color: rgba(248, 81, 73, 0.4);
-      color: #f85149;
-    }
-
-    .btn-danger:hover {
-      background: rgba(248, 81, 73, 0.3);
-    }
-
-    .hint-box {
-      background: rgba(88, 166, 255, 0.08);
-      border: 1px solid rgba(88, 166, 255, 0.25);
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 12px;
-      line-height: 1.5;
-      color: #c9d1d9;
-    }
-
-    /* Bottom Navigation Bar */
     nav.bottom-nav {
       position: fixed;
       bottom: 0;
@@ -754,91 +922,84 @@
       border-top: 1px solid var(--card-border);
       display: flex;
       justify-content: space-around;
-      padding: 8px 12px;
+      padding: 6px 8px;
       z-index: 100;
     }
 
     .nav-btn {
       flex: 1;
-      max-width: 140px;
+      max-width: 100px;
       background: transparent;
       border: none;
       color: var(--text-muted);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      padding: 6px;
+      gap: 3px;
+      padding: 5px;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
-    .nav-btn .nav-icon {
-      font-size: 20px;
-    }
+    .nav-btn .nav-icon { font-size: 18px; }
+    .nav-btn.active { color: #39d353; }
 
-    .nav-btn.active {
-      color: #39d353;
-    }
-
-    /* Tab views */
     .tab-view {
       display: none;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
-    .tab-view.active {
-      display: flex;
-    }
+    .tab-view.active { display: flex; }
 
-    /* Custom Reps Modal */
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(4px);
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 16px;
       z-index: 1000;
     }
 
-    .modal-overlay.open {
-      display: flex;
-    }
+    .modal-overlay.open { display: flex; }
 
     .modal-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 14px;
-      padding: 20px;
+      padding: 18px;
       width: 100%;
-      max-width: 360px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      max-width: 380px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     .modal-title {
       font-size: 16px;
       font-weight: 700;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    /* Floating Toast */
     #toast {
       position: fixed;
-      top: 70px;
+      top: 60px;
       left: 50%;
       transform: translateX(-50%) translateY(-20px);
       background: #238636;
       color: #fff;
-      padding: 10px 20px;
+      padding: 9px 18px;
       border-radius: 30px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
       opacity: 0;
@@ -855,38 +1016,38 @@
 </head>
 <body>
 
-  <!-- Floating Toast -->
   <div id="toast">Message</div>
   <div id="heatmap-tooltip">Tooltip</div>
 
-  <!-- Header -->
   <header>
     <div class="brand">
       <div class="brand-icon">💪</div>
       <div class="brand-text">
-        <h1>MiniGym <span class="brand-badge">GitHub Sync</span></h1>
+        <h1>MiniGym & Santé</h1>
       </div>
     </div>
     <div class="header-actions">
-      <button class="sync-status" id="syncStatusBtn" title="Cliquer pour forcer la synchronisation GitHub">
+      <button class="share-quick-btn" id="openShareModalBtn" title="Donner accès à ta copine en 1 clic">
+        <span>🔗</span>
+        <span>Lien Copine</span>
+      </button>
+      <button class="sync-status" id="syncStatusBtn" title="Statut de la synchronisation en direct">
         <span class="status-dot synced" id="syncDot"></span>
-        <span id="syncText">Prêt</span>
+        <span id="syncText">En ligne</span>
       </button>
     </div>
   </header>
 
   <main>
-    <!-- ==================== TAB 1 : DUEL & COMPTEUR ==================== -->
+    <!-- ==================== TAB 1 : DUEL DE POMPES ==================== -->
     <div class="tab-view active" id="view-duel">
-      <!-- Duel Versus Card -->
       <div class="card duel-card">
         <div class="card-title">
           <span>🥊 Duel du jour</span>
-          <span style="font-size: 12px; color: var(--text-muted);" id="todayDateStr">Aujourd'hui</span>
+          <span style="font-size: 11px; color: var(--text-muted);" id="todayDateStr">Aujourd'hui</span>
         </div>
 
         <div class="duel-versus">
-          <!-- Player 1 -->
           <div class="player-box" id="p1Box">
             <div class="player-avatar">
               <span id="p1Avatar">⚡</span>
@@ -897,115 +1058,144 @@
             <div class="player-score-sub">pompes</div>
           </div>
 
-          <!-- VS Divider -->
           <div class="vs-divider">
             <div class="vs-badge">VS</div>
             <div class="diff-badge" id="duelDiff">Égalité</div>
           </div>
 
-          <!-- Player 2 -->
           <div class="player-box" id="p2Box">
             <div class="player-avatar">
-              <span id="p2Avatar">🔥</span>
+              <span id="p2Avatar">🌸</span>
               <span class="crown-badge" id="p2Crown" style="display:none">👑</span>
             </div>
-            <div class="player-name" id="p2Name">Pote</div>
+            <div class="player-name" id="p2Name">Copine</div>
             <div class="player-score" id="p2Score" style="color: var(--p2-color)">0</div>
             <div class="player-score-sub">pompes</div>
           </div>
         </div>
 
-        <!-- Progress bar comparison -->
         <div class="duel-bar-container">
           <div class="duel-bar-p1" id="p1Bar" style="width: 50%"></div>
           <div class="duel-bar-p2" id="p2Bar" style="width: 50%"></div>
         </div>
       </div>
 
-      <!-- Undo Bar -->
       <div class="undo-bar" id="undoBar">
         <span id="undoText">Série ajoutée (+20)</span>
         <button class="undo-btn" id="undoBtn">↩ Annuler</button>
       </div>
 
-      <!-- Pushups Quick Logger -->
-      <div class="card logger-section">
+      <div class="card">
         <div class="card-title">
-          <span>⚡ Ajouter des pompes</span>
+          <span>⚡ Noter des pompes</span>
           <span style="font-size: 11px; text-transform:none; color: var(--text-muted)">Clique & valide</span>
         </div>
 
-        <!-- Active User Selector -->
         <div class="actor-selector">
           <button class="actor-btn active" id="selectP1Btn">
             <span id="selectorP1Avatar">⚡</span>
             <span id="selectorP1Name">Shaza</span>
           </button>
           <button class="actor-btn" id="selectP2Btn">
-            <span id="selectorP2Avatar">🔥</span>
-            <span id="selectorP2Name">Pote</span>
+            <span id="selectorP2Avatar">🌸</span>
+            <span id="selectorP2Name">Copine</span>
           </button>
         </div>
 
-        <!-- Quick Buttons: 5, 10, 15, 20, 30, 50 -->
         <div class="btn-grid">
-          <button class="rep-btn" data-reps="5">
-            +5
-            <span class="rep-btn-sub">échauffement</span>
-          </button>
-          <button class="rep-btn" data-reps="10">
-            +10
-            <span class="rep-btn-sub">série rapide</span>
-          </button>
-          <button class="rep-btn" data-reps="15">
-            +15
-            <span class="rep-btn-sub">bon rythme</span>
-          </button>
-          <button class="rep-btn" data-reps="20">
-            +20
-            <span class="rep-btn-sub">solide</span>
-          </button>
-          <button class="rep-btn" data-reps="30">
-            +30
-            <span class="rep-btn-sub">machine</span>
-          </button>
-          <button class="rep-btn" data-reps="50">
-            +50
-            <span class="rep-btn-sub">monstre 🔥</span>
-          </button>
-
-          <button class="rep-btn custom" id="customRepsBtn">
-            ✏️ Autre quantité personnalisée...
-          </button>
+          <button class="rep-btn" data-reps="5">+5<span class="rep-btn-sub">échauffement</span></button>
+          <button class="rep-btn" data-reps="10">+10<span class="rep-btn-sub">rapide</span></button>
+          <button class="rep-btn" data-reps="15">+15<span class="rep-btn-sub">bon rythme</span></button>
+          <button class="rep-btn" data-reps="20">+20<span class="rep-btn-sub">solide</span></button>
+          <button class="rep-btn" data-reps="30">+30<span class="rep-btn-sub">machine</span></button>
+          <button class="rep-btn" data-reps="50">+50<span class="rep-btn-sub">monstre 🔥</span></button>
+          <button class="rep-btn custom" id="customRepsBtn">✏️ Autre quantité personnalisée...</button>
         </div>
       </div>
 
-      <!-- Live Activity Log -->
       <div class="card">
         <div class="card-title">
           <span>📜 Dernières séries</span>
           <span style="font-size: 11px; color: var(--text-muted)" id="totalLogsToday">0 séries</span>
         </div>
         <div class="activity-list" id="activityList">
-          <div style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 13px;">
+          <div style="text-align: center; color: var(--text-muted); padding: 16px 0; font-size: 13px;">
             Aucune pompe enregistrée pour l'instant aujourd'hui.<br>Lance la première série !
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ==================== TAB 2 : PROFIL & STATS & HEATMAP ==================== -->
+    <!-- ==================== TAB 2 : AGENDA SANTÉ & GOMMETTES ==================== -->
+    <div class="tab-view" id="view-calendar">
+      <div class="card">
+        <!-- Switcher d'Agenda (Agenda de Shaza vs Agenda de Copine) -->
+        <div class="agenda-owner-selector">
+          <button class="agenda-owner-btn active" id="agendaOwnerP2Btn">
+            <span id="agendaOwnerP2Avatar">🌸</span>
+            <span>Agenda de <strong id="agendaOwnerP2Name">Copine</strong></span>
+          </button>
+          <button class="agenda-owner-btn" id="agendaOwnerP1Btn">
+            <span id="agendaOwnerP1Avatar">⚡</span>
+            <span>Agenda de <strong id="agendaOwnerP1Name">Shaza</strong></span>
+          </button>
+        </div>
+
+        <!-- En-tête du Mois -->
+        <div class="calendar-toolbar">
+          <div class="cal-nav-group">
+            <button class="cal-nav-btn" id="calPrevMonthBtn">◀</button>
+            <div class="cal-title" id="calCurrentMonthTitle">Octobre 2026</div>
+            <button class="cal-nav-btn" id="calNextMonthBtn">▶</button>
+          </div>
+          <button class="cal-nav-btn" id="calTodayBtn">📍 Aujourd'hui</button>
+        </div>
+
+        <!-- Boîte à gommettes -->
+        <div class="stickers-box">
+          <div class="stickers-box-header">
+            <span>🎨 Boîte à gommettes (clique pour coller) :</span>
+            <button class="btn btn-primary" id="openNewStickerModalBtn" style="padding: 4px 8px; font-size: 11px;">
+              + Créer une gommette
+            </button>
+          </div>
+
+          <div class="stickers-ribbon" id="stickersRibbon"></div>
+        </div>
+
+        <!-- Alerte Mode Collage Actif -->
+        <div class="active-sticker-alert" id="activeStickerAlert">
+          <span id="activeStickerAlertText">🎨 Gommette en main : Clique sur les jours de l'agenda !</span>
+          <button class="btn" id="stopPlacingStickerBtn" style="padding: 2px 8px; font-size: 11px; background: rgba(0,0,0,0.3);">
+            Terminer
+          </button>
+        </div>
+
+        <!-- Plan 2D du mois -->
+        <div class="calendar-weekdays-row">
+          <div>Lun</div>
+          <div>Mar</div>
+          <div>Mer</div>
+          <div>Jeu</div>
+          <div>Ven</div>
+          <div>Sam</div>
+          <div>Dim</div>
+        </div>
+
+        <div class="calendar-month-grid" id="calendarMonthGrid"></div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3 : PROFIL & STATS & CARRÉS VERTS ==================== -->
     <div class="tab-view" id="view-profile">
-      <!-- Profile Header / Selector -->
       <div class="profile-header">
-        <h2 style="font-size: 18px; font-weight: 700;">Statistiques & Heatmap</h2>
+        <h2 style="font-size: 17px; font-weight: 700;">Statistiques & Heatmap</h2>
         <div class="profile-tabs">
           <button class="profile-tab-btn active" id="profTabP1">Shaza</button>
-          <button class="profile-tab-btn" id="profTabP2">Pote</button>
+          <button class="profile-tab-btn" id="profTabP2">Copine</button>
         </div>
       </div>
 
-      <!-- KPI Summary Cards -->
       <div class="kpi-grid">
         <div class="kpi-box">
           <div class="kpi-label">🏆 Total réalisé</div>
@@ -1029,18 +1219,13 @@
         </div>
       </div>
 
-      <!-- GitHub-Style Contribution Heatmap Card -->
-      <div class="card heatmap-card">
-        <div class="heatmap-header">
-          <div class="heatmap-total-title" id="heatmapTotalTitle">
-            0 pompes sur la dernière année
-          </div>
+      <div class="card">
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 10px;" id="heatmapTotalTitle">
+          0 pompes sur la dernière année
         </div>
 
-        <!-- Heatmap Grid -->
         <div class="heatmap-scroll">
           <div class="heatmap-container">
-            <!-- Month headers -->
             <div class="heatmap-months" id="heatmapMonths"></div>
             <div class="heatmap-body">
               <div class="heatmap-weekdays">
@@ -1053,7 +1238,6 @@
           </div>
         </div>
 
-        <!-- Legend -->
         <div class="heatmap-footer">
           <span>Moins</span>
           <div class="legend-cells">
@@ -1067,66 +1251,26 @@
         </div>
       </div>
 
-      <!-- Comparison of recent days -->
       <div class="card">
         <div class="card-title">
           <span>📊 Comparatif des 7 derniers jours</span>
         </div>
-        <div id="weeklyComparison" style="display: flex; flex-direction: column; gap: 8px;">
-          <!-- Dynamically populated -->
-        </div>
+        <div id="weeklyComparison" style="display: flex; flex-direction: column; gap: 8px;"></div>
       </div>
     </div>
 
-    <!-- ==================== TAB 3 : PARAMÈTRES & SYNCHRO ==================== -->
+    <!-- ==================== TAB 4 : RÉGLAGES & SYNCHRO FIREBASE ==================== -->
     <div class="tab-view" id="view-settings">
       <div class="card">
         <div class="card-title">
-          <span>🔗 Synchronisation GitHub</span>
+          <span>👥 Qui utilise cet appareil ?</span>
         </div>
-
-        <div class="hint-box" style="margin-bottom: 14px;">
-          <strong>Comment ça marche ?</strong><br>
-          Les données sont enregistrées directement dans ton dépôt GitHub privé (<code>data.json</code>).
-          Chaque série validée crée une mise à jour. Toi et ta pote pouvez vous synchroniser en temps réel !
-        </div>
-
         <div class="settings-group">
           <div class="form-row">
-            <label>Dépôt GitHub (Propriétaire / Nom)</label>
-            <input type="text" class="form-input" id="ghRepoInput" value="shazamifius/minigym">
-          </div>
-
-          <div class="form-row">
-            <label>Token d'accès personnel GitHub (PAT)</label>
-            <input type="password" class="form-input" id="ghTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-            <span style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-              Sauvegardé uniquement dans le navigateur (localStorage).
-            </span>
-          </div>
-
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            <button class="btn btn-primary" id="saveGhBtn" style="flex: 1;">
-              💾 Sauvegarder & Tester la connexion
-            </button>
-            <button class="btn" id="forceSyncBtn">
-              🔄 Synchroniser
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <span>👥 Profils & Préférences</span>
-        </div>
-
-        <div class="settings-group">
-          <div class="form-row">
-            <label>Mon identité par défaut sur cet appareil</label>
+            <label>Mon profil sur cet écran :</label>
             <select class="form-input" id="myIdentitySelect">
-              <option value="user1">Joueur 1 (Shaza)</option>
-              <option value="user2">Joueur 2 (Pote)</option>
+              <option value="user1">⚡ Shaza</option>
+              <option value="user2">🌸 Copine</option>
             </select>
           </div>
 
@@ -1144,15 +1288,15 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="form-row">
               <label>Nom Joueur 2</label>
-              <input type="text" class="form-input" id="p2NameInput" value="Pote">
+              <input type="text" class="form-input" id="p2NameInput" value="Copine">
             </div>
             <div class="form-row">
               <label>Avatar J2</label>
-              <input type="text" class="form-input" id="p2AvatarInput" value="🔥">
+              <input type="text" class="form-input" id="p2AvatarInput" value="🌸">
             </div>
           </div>
 
-          <button class="btn" id="saveProfilesBtn" style="margin-top: 6px;">
+          <button class="btn btn-primary" id="saveProfilesBtn">
             💾 Mettre à jour les profils
           </button>
         </div>
@@ -1160,11 +1304,48 @@
 
       <div class="card">
         <div class="card-title">
-          <span>💾 Sauvegarde manuelle & Données</span>
+          <span>🔥 Synchronisation Firebase en Temps Réel</span>
+        </div>
+
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; margin-bottom: 14px;">
+          <strong>Pourquoi Firebase ?</strong><br>
+          Firebase synchronise vos stats de pompes et vos gommettes d'agenda <strong>en direct (en millisecondes)</strong> entre vos deux téléphones, <strong>sans aucun compte requis</strong> pour ta copine !
+        </div>
+
+        <div class="settings-group">
+          <div class="form-row">
+            <label>ID du Salon / Room partagé :</label>
+            <input type="text" class="form-input" id="firebaseRoomInput" value="minigym-shaza-copine" placeholder="Ex: shaza-copine-2026">
+          </div>
+
+          <div class="form-row">
+            <label>Firebase Database URL (Realtime DB) :</label>
+            <input type="text" class="form-input" id="firebaseDbUrlInput" placeholder="https://ton-projet-default-rtdb.firebaseio.com">
+          </div>
+
+          <div class="form-row">
+            <label>Firebase API Key :</label>
+            <input type="password" class="form-input" id="firebaseApiKeyInput" placeholder="AIzaSy...">
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" id="saveFirebaseBtn" style="flex: 1;">
+              💾 Enregistrer & Connecter Firebase
+            </button>
+            <button class="btn" id="testSyncBtn">
+              🔄 Tester la connexion
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>💾 Sauvegarde locale</span>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn" id="exportDataBtn">📥 Exporter JSON</button>
-          <button class="btn" id="importDataBtn">📤 Importer JSON</button>
+          <button class="btn" id="exportDataBtn">📥 Télécharger sauvegarde JSON</button>
+          <button class="btn" id="importDataBtn">📤 Importer une sauvegarde</button>
           <input type="file" id="importFileInput" accept=".json" style="display:none">
           <button class="btn btn-danger" id="resetDataBtn">⚠️ Réinitialiser</button>
         </div>
@@ -1172,23 +1353,118 @@
     </div>
   </main>
 
-  <!-- Bottom Navigation -->
   <nav class="bottom-nav">
     <button class="nav-btn active" data-tab="duel">
       <span class="nav-icon">🥊</span>
       <span>Duel</span>
     </button>
+    <button class="nav-btn" data-tab="calendar">
+      <span class="nav-icon">📅</span>
+      <span>Agenda</span>
+    </button>
     <button class="nav-btn" data-tab="profile">
       <span class="nav-icon">📊</span>
-      <span>Profil & Carrés</span>
+      <span>Profil</span>
     </button>
     <button class="nav-btn" data-tab="settings">
       <span class="nav-icon">⚙️</span>
-      <span>Paramètres</span>
+      <span>Réglages</span>
     </button>
   </nav>
 
-  <!-- Custom Reps Modal -->
+  <!-- MODAL 1 : PARTAGER AVEC MA COPINE -->
+  <div class="modal-overlay" id="shareModal">
+    <div class="modal-card">
+      <div class="modal-title">
+        <span>🔗 Inviter ma copine</span>
+        <button id="closeShareModalBtn" style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;">✕</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
+        Ta copine n'a <strong>besoin d'aucun compte</strong> !<br>
+        Envoie-lui ce lien sur WhatsApp ou par SMS. Dès qu'elle l'ouvre sur son téléphone, elle est connectée en direct avec son profil 🌸 Copine, vos stats et vos gommettes !
+      </p>
+
+      <div class="form-row" style="margin-bottom: 14px;">
+        <label>Lien magique pour ta copine :</label>
+        <input type="text" id="shareUrlInput" class="form-input" readonly style="font-size: 12px; color: #58a6ff;">
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-primary" id="copyShareUrlBtn" style="flex: 1;">
+          📋 Copier le lien
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2 : CRÉER UNE NOUVELLE GOMMETTE -->
+  <div class="modal-overlay" id="newStickerModal">
+    <div class="modal-card">
+      <div class="modal-title">
+        <span>✨ Créer une gommette</span>
+        <button id="closeNewStickerModalBtn" style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 12px;">
+        <label>Nom du médicament ou du soin :</label>
+        <input type="text" id="newStickerName" class="form-input" placeholder="Ex: Médicament Matin, Gélule 14h, Soin...">
+      </div>
+
+      <div class="form-row" style="margin-bottom: 12px;">
+        <label>Icône / Emoji :</label>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;" id="emojiPickerList">
+          <button type="button" class="btn emoji-choice" data-emoji="💊" style="font-size: 18px; padding: 6px 10px;">💊</button>
+          <button type="button" class="btn emoji-choice" data-emoji="💧" style="font-size: 18px; padding: 6px 10px;">💧</button>
+          <button type="button" class="btn emoji-choice" data-emoji="💉" style="font-size: 18px; padding: 6px 10px;">💉</button>
+          <button type="button" class="btn emoji-choice" data-emoji="🩺" style="font-size: 18px; padding: 6px 10px;">🩺</button>
+          <button type="button" class="btn emoji-choice" data-emoji="🌿" style="font-size: 18px; padding: 6px 10px;">🌿</button>
+          <button type="button" class="btn emoji-choice" data-emoji="❤️" style="font-size: 18px; padding: 6px 10px;">❤️</button>
+          <button type="button" class="btn emoji-choice" data-emoji="☀️" style="font-size: 18px; padding: 6px 10px;">☀️</button>
+          <button type="button" class="btn emoji-choice" data-emoji="🌙" style="font-size: 18px; padding: 6px 10px;">🌙</button>
+          <button type="button" class="btn emoji-choice" data-emoji="⏰" style="font-size: 18px; padding: 6px 10px;">⏰</button>
+          <button type="button" class="btn emoji-choice" data-emoji="⭐" style="font-size: 18px; padding: 6px 10px;">⭐</button>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 16px;">
+        <label>Couleur personnalisée de la gommette :</label>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+          <input type="color" id="newStickerColor" value="#38bdf8" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+          <span style="font-size: 12px; color: var(--text-muted);">Clique sur le carré pour choisir n'importe quelle couleur</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-primary" id="saveNewStickerBtn" style="flex: 1;">
+          Créer la gommette ✨
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3 : DÉTAIL D'UN JOUR DE L'AGENDA -->
+  <div class="modal-overlay" id="dayDetailModal">
+    <div class="modal-card">
+      <div class="modal-title">
+        <span id="dayDetailModalDate">18 Octobre 2026</span>
+        <button id="closeDayDetailModalBtn" style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;">✕</button>
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Gommettes collées sur ce jour :
+      </div>
+
+      <div id="dayDetailStickersList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+
+      <div style="border-top: 1px solid var(--card-border); padding-top: 12px;">
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Coller une gommette sur ce jour :</div>
+        <div id="dayDetailAddList" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4 : SÉRIE PERSONNALISÉE DE POMPES -->
   <div class="modal-overlay" id="customModal">
     <div class="modal-card">
       <div class="modal-title">✏️ Ajouter une série personnalisée</div>
@@ -1204,12 +1480,5 @@
   </div>
 
   <script src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-      });
-    }
-  </script>
 </body>
 </html>
