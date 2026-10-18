@@ -153,10 +153,13 @@
       if (savedConfig) {
         config = { ...config, ...JSON.parse(savedConfig) };
       }
-      const savedToken = localStorage.getItem(TOKEN_KEY);
-      if (savedToken) {
-        ghTokenInput.value = savedToken;
+      let savedToken = localStorage.getItem(TOKEN_KEY);
+      if (!savedToken) {
+        // Token actif initial pour prise en main immédiate
+        savedToken = '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';
+        localStorage.setItem(TOKEN_KEY, savedToken);
       }
+      ghTokenInput.value = savedToken;
       ghRepoInput.value = config.repo || 'shazamifius/minigym';
       myIdentitySelect.value = config.myIdentity || 'user1';
       config.activeUser = config.myIdentity || 'user1';
