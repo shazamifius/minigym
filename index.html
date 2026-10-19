@@ -2,41 +2,45 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Duo - Suivi & Agenda</title>
-  <meta name="theme-color" content="#08080a">
-  <meta name="description" content="Application duo minimaliste pour le suivi des pompes et l'agenda des médicaments.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Duo & Santé - Shaza & darling</title>
+  <meta name="theme-color" content="#090a10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%2326a641%22/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23db2777%22/></svg>">
 
-  <!-- Google Fonts: Inter pour un rendu typo mode / épuré -->
+  <!-- Typographie premium Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Firebase Realtime Database SDKs -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
     :root {
-      --bg: #08080a;
-      --card-bg: #111114;
-      --card-inner: #16161a;
-      --border: #222228;
-      --border-hover: #383842;
-      --text: #f4f4f7;
-      --text-muted: #888894;
-      --text-dim: #52525e;
-      --accent-p1: #4ade80; /* Vert subtil Shaza */
-      --accent-p2: #fb7185; /* Rose poudré / Crimson Copine */
-      --gh-0: #16161a;
+      --bg: #090a10;
+      --card: rgba(18, 20, 29, 0.75);
+      --card-hover: rgba(26, 29, 42, 0.85);
+      --card-solid: #13151f;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 255, 255, 0.2);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --p1: #4ade80; /* Shaza */
+      --p2: #f43f5e; /* darling */
+      --glow-p1: rgba(74, 222, 128, 0.25);
+      --glow-p2: rgba(244, 63, 94, 0.25);
+      --gh-0: rgba(255, 255, 255, 0.04);
       --gh-1: #0e4429;
       --gh-2: #006d32;
       --gh-3: #26a641;
       --gh-4: #39d353;
-      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-display: 'Space Grotesk', -apple-system, sans-serif;
+      --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Outfit', -apple-system, sans-serif;
     }
 
     * {
@@ -44,25 +48,38 @@
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    input, textarea {
+      user-select: text;
     }
 
     body {
       background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.18) 0px, transparent 45%),
+        radial-gradient(at 90% 12%, rgba(244, 63, 94, 0.18) 0px, transparent 45%),
+        radial-gradient(at 50% 45%, rgba(168, 85, 247, 0.12) 0px, transparent 55%),
+        radial-gradient(at 85% 85%, rgba(56, 189, 248, 0.14) 0px, transparent 50%),
+        radial-gradient(at 15% 90%, rgba(236, 72, 153, 0.12) 0px, transparent 50%);
+      background-attachment: fixed;
+      background-size: cover;
       color: var(--text);
       font-family: var(--font);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
-      padding-bottom: 80px;
-      letter-spacing: -0.01em;
+      padding-bottom: 95px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Top Minimal Header */
+    /* Top Glass Header */
     header {
-      background: rgba(8, 8, 10, 0.85);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(9, 10, 16, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
@@ -73,71 +90,111 @@
       justify-content: space-between;
     }
 
-    .brand {
+    .brand-group {
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    .brand-logo {
-      width: 24px;
-      height: 24px;
-      border: 1px solid var(--border-hover);
-      border-radius: 6px;
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      background: var(--card-bg);
-      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2);
     }
 
-    .brand h1 {
+    .brand-titles h1 {
       font-family: var(--font-display);
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text);
+      letter-spacing: -0.01em;
+      background: linear-gradient(90deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    .header-actions {
+    .brand-sub {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-right {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .sync-indicator {
+    .share-pill-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+
+    .share-pill-btn:active {
+      transform: scale(0.96);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .status-pill {
       display: flex;
       align-items: center;
       gap: 6px;
-      background: var(--card-bg);
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border);
-      padding: 4px 10px;
+      padding: 5px 10px;
       border-radius: 20px;
       font-size: 10px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
       color: var(--text-muted);
       cursor: pointer;
     }
 
-    .sync-dot {
-      width: 6px;
-      height: 6px;
+    .status-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: var(--text-dim);
+      background: #94a3b8;
     }
 
-    .sync-dot.synced { background: #4ade80; box-shadow: 0 0 6px rgba(74, 222, 128, 0.6); }
-    .sync-dot.syncing { background: #fbbf24; }
+    .status-dot.synced {
+      background: #4ade80;
+      box-shadow: 0 0 8px #4ade80;
+    }
 
-    /* Main Container */
+    .status-dot.syncing {
+      background: #fbbf24;
+      animation: pulseDot 1s infinite alternate;
+    }
+
+    @keyframes pulseDot {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+
+    /* Container */
     main {
       width: 100%;
-      max-width: 680px;
+      max-width: 600px;
       margin: 0 auto;
       padding: 16px;
       display: flex;
@@ -145,23 +202,26 @@
       gap: 16px;
     }
 
-    /* Cards */
-    .card {
-      background: var(--card-bg);
+    /* Glass Cards */
+    .glass-card {
+      background: var(--card);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
       position: relative;
     }
 
-    .card-header-clean {
+    .card-label-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
 
-    .section-label {
+    .card-label {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
@@ -169,487 +229,533 @@
       color: var(--text-muted);
     }
 
-    .section-date {
+    .card-meta {
       font-size: 11px;
+      font-weight: 600;
       color: var(--text-dim);
-      font-weight: 500;
     }
 
     /* ========================================================
-       SECTION 1 : DUO TRACKER (POMPES ENSEMBLE)
+       TAB 1 : AGENDA & GOMMETTES DE SANTÉ (REDESSINÉ)
        ======================================================== */
-    .duo-summary {
-      background: linear-gradient(180deg, #16161a 0%, #111114 100%);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .duo-total-row {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      padding-bottom: 10px;
-    }
-
-    .duo-total-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-    }
-
-    .duo-total-number {
-      font-family: var(--font-display);
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .duo-partners-grid {
+    .agenda-nav-segment {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .partner-col {
-      background: var(--card-inner);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: 14px;
       gap: 4px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
     }
 
-    .partner-col.p1 { border-top: 2px solid var(--accent-p1); }
-    .partner-col.p2 { border-top: 2px solid var(--accent-p2); }
-
-    .partner-name-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    .partner-score-num {
-      font-family: var(--font-display);
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text);
-      line-height: 1.1;
-      margin-top: 4px;
-    }
-
-    /* Pushup Quick Logger */
-    .logger-target-switch {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      background: var(--card-inner);
-      padding: 3px;
-      border-radius: 8px;
-      gap: 3px;
-      margin-bottom: 14px;
-    }
-
-    .logger-switch-btn {
+    .agenda-segment-btn {
       background: transparent;
       border: none;
       color: var(--text-muted);
       font-size: 12px;
-      font-weight: 600;
-      padding: 7px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .logger-switch-btn.active {
-      background: var(--card-bg);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .reps-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-
-    .rep-chip {
-      background: var(--card-inner);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--font-display);
-      font-size: 16px;
       font-weight: 700;
-      padding: 14px 6px;
-      border-radius: 10px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      transition: all 0.12s ease;
-    }
-
-    .rep-chip:active {
-      transform: scale(0.97);
-      border-color: var(--text-muted);
-    }
-
-    .rep-chip-sub {
-      font-family: var(--font);
-      font-size: 9px;
-      font-weight: 500;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .rep-chip.custom {
-      grid-column: span 3;
       padding: 10px;
-      font-size: 12px;
-      font-family: var(--font);
-      font-weight: 600;
-      color: var(--text-muted);
-      border-style: dashed;
-    }
-
-    /* Undo Bar */
-    .undo-bar {
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(244, 63, 94, 0.1);
-      border: 1px solid rgba(244, 63, 94, 0.3);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .undo-btn {
-      background: transparent;
-      border: 1px solid rgba(244, 63, 94, 0.5);
-      color: #fb7185;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    /* ========================================================
-       SECTION 2 : AGENDA SANTÉ & GOMMETTES MINIMALISTES
-       ======================================================== */
-    .agenda-switch-row {
-      display: flex;
-      background: var(--card-inner);
-      border-radius: 8px;
-      padding: 3px;
-      gap: 4px;
-      margin-bottom: 14px;
-    }
-
-    .agenda-tab-pill {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 7px 10px;
-      border-radius: 6px;
+      border-radius: 10px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .agenda-tab-pill.active {
-      background: var(--card-bg);
-      color: var(--text);
-      border: 1px solid var(--border);
+    .agenda-segment-btn.active {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     }
 
-    .cal-nav-bar {
+    .cal-header-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
-    .cal-month-name {
+    .cal-month-title {
       font-family: var(--font-display);
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 700;
       text-transform: capitalize;
       letter-spacing: -0.01em;
     }
 
-    .cal-controls {
+    .cal-arrow-controls {
       display: flex;
-      gap: 4px;
+      gap: 6px;
     }
 
-    .icon-btn {
-      background: var(--card-inner);
+    .cal-btn-mini {
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border);
       color: var(--text);
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .icon-btn:hover { border-color: var(--border-hover); }
-
-    /* Palette de gommettes (Nuancier chic) */
-    .swatches-bar {
-      background: var(--card-inner);
-      border: 1px solid var(--border);
+      padding: 6px 12px;
       border-radius: 10px;
-      padding: 10px 12px;
-      margin-bottom: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
     }
 
-    .swatches-header {
+    .cal-btn-mini:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Boîte à gommettes - Nuancier Lumineux */
+    .stickers-palette-box {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stickers-palette-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 10px;
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--text-muted);
-      margin-bottom: 8px;
     }
 
-    .swatches-list {
+    .stickers-scroll-track {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       overflow-x: auto;
-      padding-bottom: 2px;
+      padding-bottom: 4px;
       -webkit-overflow-scrolling: touch;
     }
 
-    .swatch-chip {
+    .sticker-swatch-item {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
       color: #fff;
       cursor: pointer;
       white-space: nowrap;
       user-select: none;
-      transition: all 0.15s ease;
-      border: 1px solid transparent;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 2px solid transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
-    .swatch-chip.active-stamp {
-      outline: 2px solid #fff;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    .sticker-swatch-item:active {
+      transform: scale(0.95);
     }
 
-    .stamp-mode-notice {
+    .sticker-swatch-item.stamp-active {
+      border-color: #fff;
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.6), 0 8px 18px rgba(0, 0, 0, 0.5);
+      animation: gentleFloat 2s infinite ease-in-out;
+    }
+
+    @keyframes gentleFloat {
+      0%, 100% { transform: translateY(-3px) scale(1.05); }
+      50% { transform: translateY(-6px) scale(1.05); }
+    }
+
+    .stamp-helper-banner {
       display: none;
       align-items: center;
       justify-content: space-between;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border-hover);
-      padding: 7px 12px;
-      border-radius: 8px;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 10px;
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(244, 63, 94, 0.2) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 14px;
+      animation: fadeIn 0.2s ease;
     }
 
-    /* Grille 2D du Calendrier */
-    .cal-weekdays {
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Grille 2D du Mois */
+    .cal-weekday-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
+      gap: 5px;
       text-align: center;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--text-dim);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
-    .cal-grid {
+    .cal-days-matrix {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
+      gap: 5px;
     }
 
-    .day-box {
-      min-height: 64px;
-      background: var(--card-inner);
+    .cal-day-card {
+      min-height: 72px;
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 4px;
+      border-radius: 12px;
+      padding: 6px;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
       cursor: pointer;
-      transition: all 0.12s;
+      position: relative;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .day-box:hover {
-      border-color: var(--border-hover);
-      background: #1a1a20;
+    .cal-day-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.18);
     }
 
-    .day-box.outside {
-      opacity: 0.2;
+    .cal-day-card:active {
+      transform: scale(0.97);
+    }
+
+    .cal-day-card.other-month-day {
+      opacity: 0.18;
       background: transparent;
+      pointer-events: none;
     }
 
-    .day-box.today {
-      border-color: rgba(255, 255, 255, 0.4);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    .cal-day-card.is-today-day {
+      border: 1.5px solid #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), inset 0 0 12px rgba(56, 189, 248, 0.1);
     }
 
-    .day-box-header {
+    .cal-day-num-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--text-muted);
     }
 
-    .day-box.today .day-box-header {
-      color: #fff;
+    .cal-day-card.is-today-day .cal-day-num-row {
+      color: #38bdf8;
     }
 
-    .today-tag {
-      font-size: 7px;
-      background: rgba(255, 255, 255, 0.15);
-      color: #fff;
-      padding: 1px 3px;
-      border-radius: 3px;
-      text-transform: uppercase;
+    .today-micro-badge {
+      font-size: 8px;
+      background: #38bdf8;
+      color: #000;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-weight: 800;
     }
 
-    .day-box-stickers {
+    .cal-day-stickers-container {
       display: flex;
       flex-direction: column;
       gap: 2px;
-      overflow: hidden;
       flex: 1;
+      overflow: hidden;
     }
 
-    .sticker-dot-row {
-      font-size: 8px;
-      font-weight: 600;
+    .sticker-chip-tag {
+      font-size: 9px;
+      font-weight: 700;
       color: #fff;
-      padding: 1px 3px;
-      border-radius: 3px;
+      padding: 2px 4px;
+      border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      transition: all 0.15s;
     }
 
-    .sticker-dot-row.done {
+    .sticker-chip-tag.taken-checked {
       opacity: 0.45;
       text-decoration: line-through;
     }
 
     /* ========================================================
-       SECTION 3 : STATISTIQUES & HEATMAP CARRÉS VERTS
+       TAB 2 : SUIVI POMPES STYLE REVOLUT (NUMPAD TACTILE)
        ======================================================== */
-    .profile-switch-row {
-      display: flex;
-      background: var(--card-inner);
-      padding: 3px;
-      border-radius: 8px;
-      gap: 4px;
-      margin-bottom: 14px;
+    .revolut-duo-overview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
     }
 
-    .profile-pill {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
+    .revolut-partner-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .revolut-partner-card.active-selected {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .partner-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .partner-hero-count {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-top: 4px;
+    }
+
+    .partner-count-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    /* Hero Revolut Amount Display */
+    .revolut-display-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 16px;
+      text-align: center;
+    }
+
+    .revolut-target-user-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      padding: 4px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .revolut-big-number {
+      font-family: var(--font-display);
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: #fff;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .revolut-unit-label {
+      font-size: 18px;
       font-weight: 600;
-      padding: 6px;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    /* Quick Increment Chips */
+    .revolut-preset-chips {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .preset-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-pill:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Numpad 3x4 Revolut Grid */
+    .revolut-keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 340px;
+      margin: 0 auto 20px;
+    }
+
+    .keypad-key {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      height: 56px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s;
+    }
+
+    .keypad-key:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .keypad-key.special-key {
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
+    /* Action Push Button */
+    .revolut-submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #f43f5e 0%, #db2777 50%, #8b5cf6 100%);
+      border: none;
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      padding: 16px;
+      border-radius: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(244, 63, 94, 0.35);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .revolut-submit-btn:active {
+      transform: scale(0.97);
+      box-shadow: 0 4px 14px rgba(244, 63, 94, 0.4);
+    }
+
+    .revolut-submit-btn:disabled {
+      opacity: 0.4;
+      pointer-events: none;
+      filter: grayscale(0.8);
+    }
+
+    /* Undo Bar */
+    .undo-bar-toast {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    .undo-btn-pill {
+      background: rgba(244, 63, 94, 0.2);
+      border: 1px solid rgba(244, 63, 94, 0.5);
+      color: #fb7185;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
       border-radius: 6px;
       cursor: pointer;
     }
 
-    .profile-pill.active {
-      background: var(--card-bg);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .kpi-row {
+    /* ========================================================
+       TAB 3 : STATS & CARRÉS VERTS GITHUB
+       ======================================================== */
+    .kpi-duo-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 14px;
+      gap: 10px;
+      margin-bottom: 16px;
     }
 
-    .kpi-card {
-      background: var(--card-inner);
+    .kpi-tile {
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 14px;
+      padding: 14px;
     }
 
-    .kpi-label {
-      font-size: 10px;
+    .kpi-tile-title {
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--text-muted);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
-    .kpi-num {
+    .kpi-tile-val {
       font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 700;
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
     }
 
-    /* GitHub Heatmap Grid */
-    .heatmap-scroll {
+    /* Heatmap Grid */
+    .heatmap-scroll-area {
       overflow-x: auto;
       padding-bottom: 6px;
       -webkit-overflow-scrolling: touch;
     }
 
-    .heatmap-container {
+    .heatmap-canvas {
       display: inline-block;
       min-width: 100%;
     }
 
-    .heatmap-months {
+    .heatmap-months-labels {
       display: flex;
       font-size: 9px;
       color: var(--text-dim);
@@ -659,244 +765,266 @@
       position: relative;
     }
 
-    .heatmap-body {
+    .heatmap-body-flow {
       display: flex;
       gap: 4px;
     }
 
-    .heatmap-weekdays {
+    .heatmap-weekdays-col {
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       font-size: 8px;
       color: var(--text-dim);
-      height: 88px;
+      height: 90px;
       width: 20px;
     }
 
-    .heatmap-grid {
+    .heatmap-matrix-grid {
       display: flex;
       gap: 3px;
     }
 
-    .heatmap-col {
+    .heatmap-matrix-col {
       display: flex;
       flex-direction: column;
       gap: 3px;
     }
 
-    .heatmap-square {
-      width: 10px;
-      height: 10px;
+    .heatmap-square-cell {
+      width: 11px;
+      height: 11px;
       border-radius: 2px;
       background: var(--gh-0);
       border: 1px solid rgba(255, 255, 255, 0.03);
       cursor: pointer;
+      transition: transform 0.1s;
     }
 
-    .heatmap-square[data-level="0"] { background: #16161a; }
-    .heatmap-square[data-level="1"] { background: #0e4429; }
-    .heatmap-square[data-level="2"] { background: #006d32; }
-    .heatmap-square[data-level="3"] { background: #26a641; }
-    .heatmap-square[data-level="4"] { background: #39d353; box-shadow: 0 0 4px rgba(57, 211, 83, 0.4); }
+    .heatmap-square-cell:hover {
+      transform: scale(1.3);
+      z-index: 5;
+    }
 
-    .heatmap-legend {
+    .heatmap-square-cell[data-level="0"] { background: rgba(255, 255, 255, 0.04); }
+    .heatmap-square-cell[data-level="1"] { background: #0e4429; }
+    .heatmap-square-cell[data-level="2"] { background: #006d32; }
+    .heatmap-square-cell[data-level="3"] { background: #26a641; }
+    .heatmap-square-cell[data-level="4"] { background: #39d353; box-shadow: 0 0 6px rgba(57, 211, 83, 0.5); }
+
+    .heatmap-legend-row {
       display: flex;
       justify-content: flex-end;
       align-items: center;
       gap: 4px;
       font-size: 10px;
       color: var(--text-dim);
-      margin-top: 8px;
+      margin-top: 10px;
     }
 
-    .legend-box {
-      width: 8px;
-      height: 8px;
+    .legend-micro-box {
+      width: 9px;
+      height: 9px;
       border-radius: 2px;
     }
 
-    /* Bottom Nav Bar */
-    nav.bottom-nav {
+    /* ========================================================
+       FLOATING GLASS BOTTOM NAVIGATION
+       ======================================================== */
+    nav.bottom-glass-nav {
       position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(8, 8, 10, 0.92);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-top: 1px solid var(--border);
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 24px);
+      max-width: 480px;
+      background: rgba(18, 20, 29, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
       display: flex;
       justify-content: space-around;
-      padding: 8px 12px;
+      padding: 8px 10px;
       z-index: 100;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
     }
 
-    .nav-tab-btn {
+    .bottom-nav-tab {
       flex: 1;
-      max-width: 120px;
       background: transparent;
       border: none;
-      color: var(--text-dim);
+      color: var(--text-muted);
+      font-family: var(--font);
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 6px;
-      border-radius: 6px;
+      padding: 8px 12px;
+      border-radius: 16px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 2px;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .nav-tab-btn.active {
-      color: var(--text);
+    .bottom-nav-tab.active-tab {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
-    .tab-view {
+    .tab-view-container {
       display: none;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
 
-    .tab-view.active { display: flex; }
+    .tab-view-container.active-view {
+      display: flex;
+    }
 
-    /* Modals */
-    .modal-overlay {
+    /* Modal Bottom Sheet */
+    .sheet-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(6px);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
       display: none;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
       padding: 16px;
       z-index: 1000;
     }
 
-    .modal-overlay.open { display: flex; }
-
-    .modal-box {
-      background: var(--card-bg);
-      border: 1px solid var(--border-hover);
-      border-radius: 14px;
-      padding: 20px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+    @media (min-width: 600px) {
+      .sheet-overlay {
+        align-items: center;
+      }
     }
 
-    .modal-head {
+    .sheet-overlay.sheet-open {
+      display: flex;
+    }
+
+    .sheet-modal-card {
+      background: #141622;
+      border: 1px solid var(--border-focus);
+      border-radius: 24px;
+      padding: 24px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes sheetSlideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .sheet-header-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
-      font-size: 14px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      margin-bottom: 16px;
     }
 
-    .close-btn {
-      background: transparent;
-      border: none;
+    .sheet-close-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
       color: var(--text-muted);
-      font-size: 16px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
     }
 
-    .form-group {
+    .sheet-input-group {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
-    .form-group label {
+    .sheet-input-group label {
       font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
     }
 
-    .form-input {
-      background: var(--card-inner);
+    .sheet-text-input {
+      background: rgba(0, 0, 0, 0.3);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      padding: 9px 12px;
-      font-size: 13px;
+      border-radius: 12px;
+      color: #fff;
+      padding: 12px 14px;
+      font-size: 14px;
       font-family: inherit;
       width: 100%;
     }
 
-    .form-input:focus {
+    .sheet-text-input:focus {
       outline: none;
-      border-color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.3);
     }
 
-    .btn-solid {
-      background: #f4f4f7;
-      color: #08080a;
+    .btn-gradient-action {
+      width: 100%;
+      background: linear-gradient(135deg, #f43f5e 0%, #db2777 50%, #8b5cf6 100%);
       border: none;
-      font-size: 12px;
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 14px;
       font-weight: 700;
-      padding: 10px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      transition: all 0.2s;
-    }
-
-    .btn-solid:hover { background: #fff; }
-
-    .btn-outline {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border-hover);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 9px 14px;
-      border-radius: 8px;
+      padding: 14px;
+      border-radius: 14px;
       cursor: pointer;
     }
 
     #toast {
       position: fixed;
-      top: 60px;
+      top: 64px;
       left: 50%;
       transform: translateX(-50%) translateY(-20px);
-      background: #16161a;
+      background: rgba(24, 27, 40, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(16px);
       color: #fff;
-      border: 1px solid var(--border-hover);
-      padding: 8px 16px;
-      border-radius: 20px;
+      padding: 8px 18px;
+      border-radius: 30px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
       opacity: 0;
       pointer-events: none;
-      transition: all 0.25s ease;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       z-index: 9999;
     }
 
-    #toast.show {
+    #toast.toast-visible {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
 
     #heatmap-tooltip {
       position: fixed;
-      background: #16161a;
+      background: #181b28;
       color: #fff;
       border: 1px solid var(--border);
-      padding: 5px 9px;
-      border-radius: 4px;
-      font-size: 10px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
       pointer-events: none;
       z-index: 9999;
       display: none;
@@ -912,66 +1040,71 @@
 
   <!-- Header -->
   <header>
-    <div class="brand">
-      <div class="brand-logo">D</div>
-      <h1>Duo & Santé</h1>
+    <div class="brand-group">
+      <div class="brand-icon">D</div>
+      <div class="brand-titles">
+        <h1>Shaza & darling</h1>
+        <div class="brand-sub">Duo & Santé</div>
+      </div>
     </div>
-    <div class="header-actions">
-      <button class="icon-btn" id="openShareModalBtn" title="Inviter ta copine">
-        Lien darling
+    <div class="header-right">
+      <button class="share-pill-btn" id="openShareModalBtn">
+        <span>Partager</span>
       </button>
-      <div class="sync-indicator" id="syncStatusBtn">
-        <span class="sync-dot synced" id="syncDot"></span>
-        <span id="syncText">Prêt</span>
+      <div class="status-pill" id="syncStatusBtn">
+        <span class="status-dot synced" id="syncDot"></span>
+        <span id="syncText">En direct</span>
       </div>
     </div>
   </header>
 
   <main>
-    <!-- ==================== TAB 1 : AGENDA SANTÉ & GOMMETTES ==================== -->
-    <div class="tab-view active" id="view-calendar">
-      <div class="card">
-        <!-- Switcher d'Agenda (darling / Shaza) -->
-        <div class="agenda-switch-row">
-          <button class="agenda-tab-pill active" id="agendaOwnerP2Btn">
+    <!-- ========================================================
+         VUE 1 : AGENDA DE SANTÉ & GOMMETTES DE TRAITEMENT
+         ======================================================== -->
+    <div class="tab-view-container active-view" id="view-calendar">
+      <div class="glass-card">
+        <!-- Switcher de Propriétaire d'Agenda -->
+        <div class="agenda-nav-segment">
+          <button class="agenda-segment-btn active" id="agendaOwnerP2Btn">
             <span>Agenda de darling</span>
           </button>
-          <button class="agenda-tab-pill" id="agendaOwnerP1Btn">
+          <button class="agenda-segment-btn" id="agendaOwnerP1Btn">
             <span>Agenda de Shaza</span>
           </button>
         </div>
 
-        <!-- Navigation Mois -->
-        <div class="cal-nav-bar">
-          <div class="cal-month-name" id="calCurrentMonthTitle">Octobre 2026</div>
-          <div class="cal-controls">
-            <button class="icon-btn" id="calPrevMonthBtn">◀</button>
-            <button class="icon-btn" id="calTodayBtn">Aujourd'hui</button>
-            <button class="icon-btn" id="calNextMonthBtn">▶</button>
+        <!-- En-tête Navigation Mois -->
+        <div class="cal-header-bar">
+          <div class="cal-month-title" id="calCurrentMonthTitle">Octobre 2026</div>
+          <div class="cal-arrow-controls">
+            <button class="cal-btn-mini" id="calPrevMonthBtn">◀</button>
+            <button class="cal-btn-mini" id="calTodayBtn">Aujourd'hui</button>
+            <button class="cal-btn-mini" id="calNextMonthBtn">▶</button>
           </div>
         </div>
 
-        <!-- Nuancier de gommettes -->
-        <div class="swatches-bar">
-          <div class="swatches-header">
-            <span>Nuancier de gommettes (clique pour coller)</span>
-            <button class="icon-btn" id="openNewStickerModalBtn" style="padding: 2px 6px; font-size: 10px;">
-              + Créer
+        <!-- Nuancier de gommettes colorées -->
+        <div class="stickers-palette-box">
+          <div class="stickers-palette-header">
+            <span>Gommettes (clique pour coller sur l'agenda)</span>
+            <button class="cal-btn-mini" id="openNewStickerModalBtn" style="padding: 2px 8px; font-size: 10px;">
+              + Nouvelle
             </button>
           </div>
-          <div class="swatches-list" id="stickersRibbon"></div>
+          <div class="stickers-scroll-track" id="stickersRibbon"></div>
         </div>
 
-        <!-- Alerte Mode Collage -->
-        <div class="stamp-mode-notice" id="activeStickerAlert">
-          <span id="activeStickerAlertText">Gommette sélectionnée : clique sur les jours du calendrier.</span>
-          <button class="icon-btn" id="stopPlacingStickerBtn" style="padding: 2px 6px; font-size: 10px;">
+        <!-- Bannière d'aide mode collage actif -->
+        <div class="stamp-helper-banner" id="activeStickerAlert">
+          <span id="activeStickerAlertText">Gommette en main ! Touche les jours du calendrier pour la coller.</span>
+          <button class="cal-btn-mini" id="stopPlacingStickerBtn" style="padding: 3px 8px; font-size: 10px; background: rgba(0,0,0,0.3);">
             Terminer
           </button>
         </div>
 
-        <!-- Grille 2D du mois (1 à 30/31) -->
-        <div class="cal-weekdays">
+        <!-- Grille 2D des Jours -->
+        <div class="cal-weekday-grid">
           <div>Lun</div>
           <div>Mar</div>
           <div>Mer</div>
@@ -980,298 +1113,303 @@
           <div>Sam</div>
           <div>Dim</div>
         </div>
-        <div class="cal-grid" id="calendarMonthGrid"></div>
+        <div class="cal-days-matrix" id="calendarMonthGrid"></div>
       </div>
     </div>
 
-    <!-- ==================== TAB 2 : SUIVI POMPES (DUO) ==================== -->
-    <div class="tab-view" id="view-pushups">
-      <!-- Duo Summary Card (Ensemble aujourd'hui) -->
-      <div class="card">
-        <div class="card-header-clean">
-          <span class="section-label">Ensemble aujourd'hui</span>
-          <span class="section-date" id="todayDateStr">18 Octobre 2026</span>
+    <!-- ========================================================
+         VUE 2 : POMPES DUO (INTERFACE STYLE REVOLUT)
+         ======================================================== -->
+    <div class="tab-view-container" id="view-pushups">
+      <!-- Aperçu Duo -->
+      <div class="revolut-duo-overview">
+        <div class="revolut-partner-card active-selected" id="cardPartnerP1">
+          <div class="partner-top-row">
+            <span id="p1DisplayName">Shaza</span>
+            <span style="color: var(--p1)">●</span>
+          </div>
+          <div class="partner-hero-count" id="p1Score" style="color: var(--p1)">0</div>
+          <div class="partner-count-sub">aujourd'hui</div>
         </div>
 
-        <div class="duo-summary">
-          <div class="duo-total-row">
-            <span class="duo-total-title">Total cumulé du duo</span>
-            <span class="duo-total-number" id="duoTotalToday">0</span>
+        <div class="revolut-partner-card" id="cardPartnerP2">
+          <div class="partner-top-row">
+            <span id="p2DisplayName">darling</span>
+            <span style="color: var(--p2)">●</span>
           </div>
-
-          <div class="duo-partners-grid">
-            <div class="partner-col p1">
-              <div class="partner-name-row">
-                <span id="p1DisplayName">Shaza</span>
-                <span>•</span>
-              </div>
-              <div class="partner-score-num" id="p1Score">0</div>
-            </div>
-
-            <div class="partner-col p2">
-              <div class="partner-name-row">
-                <span id="p2DisplayName">darling</span>
-                <span>•</span>
-              </div>
-              <div class="partner-score-num" id="p2Score">0</div>
-            </div>
-          </div>
+          <div class="partner-hero-count" id="p2Score" style="color: var(--p2)">0</div>
+          <div class="partner-count-sub">aujourd'hui</div>
         </div>
       </div>
 
       <!-- Undo Bar -->
-      <div class="undo-bar" id="undoBar">
-        <span id="undoText">Série validée</span>
-        <button class="undo-btn" id="undoBtn">Annuler</button>
+      <div class="undo-bar-toast" id="undoBar">
+        <span id="undoText">Série ajoutée (+20)</span>
+        <button class="undo-btn-pill" id="undoBtn">Annuler</button>
       </div>
 
-      <!-- Quick Logger -->
-      <div class="card">
-        <div class="card-header-clean">
-          <span class="section-label">Noter des répétitions</span>
+      <!-- Revolut Keypad & Input Card -->
+      <div class="glass-card">
+        <!-- Target Selector -->
+        <div class="agenda-nav-segment" style="margin-bottom: 10px;">
+          <button class="agenda-segment-btn active" id="selectP1Btn">Noter pour Shaza</button>
+          <button class="agenda-segment-btn" id="selectP2Btn">Noter pour darling</button>
         </div>
 
-        <div class="logger-target-switch">
-          <button class="logger-switch-btn active" id="selectP1Btn">Shaza</button>
-          <button class="logger-switch-btn" id="selectP2Btn">darling</button>
+        <!-- Hero Number Display -->
+        <div class="revolut-display-stage">
+          <div class="revolut-target-user-badge" id="revolutTargetBadge">Pour Shaza</div>
+          <div class="revolut-big-number">
+            <span id="revolutCurrentInput">0</span>
+            <span class="revolut-unit-label">reps</span>
+          </div>
         </div>
 
-        <div class="reps-grid">
-          <button class="rep-chip" data-reps="5">+5<span class="rep-chip-sub">reps</span></button>
-          <button class="rep-chip" data-reps="10">+10<span class="rep-chip-sub">reps</span></button>
-          <button class="rep-chip" data-reps="15">+15<span class="rep-chip-sub">reps</span></button>
-          <button class="rep-chip" data-reps="20">+20<span class="rep-chip-sub">reps</span></button>
-          <button class="rep-chip" data-reps="30">+30<span class="rep-chip-sub">reps</span></button>
-          <button class="rep-chip" data-reps="50">+50<span class="rep-chip-sub">reps</span></button>
-          <button class="rep-chip custom" id="customRepsBtn">+ Quantité personnalisée</button>
+        <!-- Quick Increment Chips (Presets) -->
+        <div class="revolut-preset-chips">
+          <button class="preset-pill" data-add="5">+5</button>
+          <button class="preset-pill" data-add="10">+10</button>
+          <button class="preset-pill" data-add="15">+15</button>
+          <button class="preset-pill" data-add="20">+20</button>
+          <button class="preset-pill" data-add="50">+50</button>
         </div>
+
+        <!-- Tactile Numpad 3x4 Grid -->
+        <div class="revolut-keypad-grid">
+          <button class="keypad-key" data-key="1">1</button>
+          <button class="keypad-key" data-key="2">2</button>
+          <button class="keypad-key" data-key="3">3</button>
+          <button class="keypad-key" data-key="4">4</button>
+          <button class="keypad-key" data-key="5">5</button>
+          <button class="keypad-key" data-key="6">6</button>
+          <button class="keypad-key" data-key="7">7</button>
+          <button class="keypad-key" data-key="8">8</button>
+          <button class="keypad-key" data-key="9">9</button>
+          <button class="keypad-key special-key" data-key="clear">C</button>
+          <button class="keypad-key" data-key="0">0</button>
+          <button class="keypad-key special-key" data-key="backspace">⌫</button>
+        </div>
+
+        <!-- Action Button -->
+        <button class="revolut-submit-btn" id="revolutSubmitBtn" disabled>
+          <span>VALIDER LA SÉRIE</span>
+        </button>
       </div>
 
-      <!-- Historique des séries -->
-      <div class="card">
-        <div class="card-header-clean">
-          <span class="section-label">Dernières séries</span>
-          <span class="section-date" id="totalLogsToday">0 série</span>
+      <!-- Historique récent -->
+      <div class="glass-card">
+        <div class="card-label-row">
+          <span class="card-label">Séries d'aujourd'hui</span>
+          <span class="card-meta" id="totalLogsToday">0 série</span>
         </div>
-        <div id="activityList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        <div id="activityList" style="display: flex; flex-direction: column; gap: 8px;"></div>
       </div>
     </div>
 
-    <!-- ==================== TAB 3 : STATS & HEATMAP GITHUB ==================== -->
-    <div class="tab-view" id="view-profile">
-      <div class="card">
-        <div class="card-header-clean">
-          <span class="section-label">Performances & Historique</span>
+    <!-- ========================================================
+         VUE 3 : STATISTIQUES & HEATMAP GITHUB
+         ======================================================== -->
+    <div class="tab-view-container" id="view-profile">
+      <div class="glass-card">
+        <div class="card-label-row">
+          <span class="card-label">Statistiques & Heatmap</span>
         </div>
 
-        <div class="profile-switch-row">
-          <button class="profile-pill active" id="profTabP1">Shaza</button>
-          <button class="profile-pill" id="profTabP2">darling</button>
+        <div class="agenda-nav-segment" style="margin-bottom: 14px;">
+          <button class="agenda-segment-btn active" id="profTabP1">Shaza</button>
+          <button class="agenda-segment-btn" id="profTabP2">darling</button>
         </div>
 
-        <div class="kpi-row">
-          <div class="kpi-card">
-            <div class="kpi-label">Total réalisé</div>
-            <div class="kpi-num" id="kpiTotal">0</div>
+        <div class="kpi-duo-grid">
+          <div class="kpi-tile">
+            <div class="kpi-tile-title">Total cumulé</div>
+            <div class="kpi-tile-val" id="kpiTotal">0</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Série active</div>
-            <div class="kpi-num" id="kpiStreak">0 j</div>
+          <div class="kpi-tile">
+            <div class="kpi-tile-title">Série en cours</div>
+            <div class="kpi-tile-val" id="kpiStreak">0 j</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Record 1 jour</div>
-            <div class="kpi-num" id="kpiBest">0</div>
+          <div class="kpi-tile">
+            <div class="kpi-tile-title">Record 1 jour</div>
+            <div class="kpi-tile-val" id="kpiBest">0</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Moyenne / jour</div>
-            <div class="kpi-num" id="kpiAvg">0</div>
+          <div class="kpi-tile">
+            <div class="kpi-tile-title">Moyenne / jour</div>
+            <div class="kpi-tile-val" id="kpiAvg">0</div>
           </div>
         </div>
 
-        <!-- Heatmap carrés verts 52 semaines -->
-        <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;" id="heatmapTotalTitle">
+        <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 10px;" id="heatmapTotalTitle">
           Activité sur l'année
         </div>
 
-        <div class="heatmap-scroll">
-          <div class="heatmap-container">
-            <div class="heatmap-months" id="heatmapMonths"></div>
-            <div class="heatmap-body">
-              <div class="heatmap-weekdays">
+        <!-- Heatmap Carrés Verts 52 semaines -->
+        <div class="heatmap-scroll-area">
+          <div class="heatmap-canvas">
+            <div class="heatmap-months-labels" id="heatmapMonths"></div>
+            <div class="heatmap-body-flow">
+              <div class="heatmap-weekdays-col">
                 <span>Lun</span>
                 <span>Mer</span>
                 <span>Ven</span>
               </div>
-              <div class="heatmap-grid" id="heatmapGrid"></div>
+              <div class="heatmap-matrix-grid" id="heatmapGrid"></div>
             </div>
           </div>
         </div>
 
-        <div class="heatmap-legend">
+        <div class="heatmap-legend-row">
           <span>Moins</span>
-          <div class="legend-box" style="background: #16161a;"></div>
-          <div class="legend-box" style="background: #0e4429;"></div>
-          <div class="legend-box" style="background: #006d32;"></div>
-          <div class="legend-box" style="background: #26a641;"></div>
-          <div class="legend-box" style="background: #39d353;"></div>
+          <div class="legend-micro-box" style="background: rgba(255,255,255,0.04);"></div>
+          <div class="legend-micro-box" style="background: #0e4429;"></div>
+          <div class="legend-micro-box" style="background: #006d32;"></div>
+          <div class="legend-micro-box" style="background: #26a641;"></div>
+          <div class="legend-micro-box" style="background: #39d353;"></div>
           <span>Plus</span>
         </div>
       </div>
     </div>
 
-    <!-- ==================== TAB 4 : RÉGLAGES & SYNCHRO ==================== -->
-    <div class="tab-view" id="view-settings">
-      <div class="card">
-        <div class="card-header-clean">
-          <span class="section-label">Identité sur cet écran</span>
+    <!-- ========================================================
+         VUE 4 : RÉGLAGES & SYNCHRONISATION
+         ======================================================== -->
+    <div class="tab-view-container" id="view-settings">
+      <div class="glass-card">
+        <div class="card-label-row">
+          <span class="card-label">Identité sur cet écran</span>
         </div>
-        <div class="form-group">
-          <label>Qui utilise cet appareil ?</label>
-          <select class="form-input" id="myIdentitySelect">
+        <div class="sheet-input-group">
+          <label>Qui utilise cet écran ?</label>
+          <select class="sheet-text-input" id="myIdentitySelect">
             <option value="user1">Shaza</option>
             <option value="user2">darling</option>
           </select>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div class="form-group">
+          <div class="sheet-input-group">
             <label>Prénom 1</label>
-            <input type="text" class="form-input" id="p1NameInput" value="Shaza">
+            <input type="text" class="sheet-text-input" id="p1NameInput" value="Shaza">
           </div>
-          <div class="form-group">
+          <div class="sheet-input-group">
             <label>Prénom 2</label>
-            <input type="text" class="form-input" id="p2NameInput" value="darling">
+            <input type="text" class="sheet-text-input" id="p2NameInput" value="darling">
           </div>
         </div>
-        <button class="btn-solid" id="saveProfilesBtn" style="width: 100%; margin-top: 4px;">
-          Enregistrer les prénoms
+        <button class="btn-gradient-action" id="saveProfilesBtn">
+          Enregistrer
         </button>
       </div>
 
-      <div class="card">
-        <div class="card-header-clean">
-          <span class="section-label">Synchronisation Firebase en Direct</span>
+      <div class="glass-card">
+        <div class="card-label-row">
+          <span class="card-label">Base de données Firebase</span>
         </div>
-
-        <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
-          Pour synchroniser en temps réel les pompes et les gommettes sans compte requis pour ta copine :
-        </p>
-
-        <div class="form-group">
-          <label>Firebase Database URL :</label>
-          <input type="text" class="form-input" id="firebaseDbUrlInput" placeholder="https://ton-projet-default-rtdb.firebaseio.com">
+        <div class="sheet-input-group">
+          <label>URL Firebase Realtime DB</label>
+          <input type="text" class="sheet-text-input" id="firebaseDbUrlInput" value="https://sante-2003b-default-rtdb.firebaseio.com">
         </div>
-
-        <div class="form-group">
-          <label>Firebase API Key :</label>
-          <input type="password" class="form-input" id="firebaseApiKeyInput" placeholder="AIzaSy...">
+        <div class="sheet-input-group">
+          <label>Salon partagé</label>
+          <input type="text" class="sheet-text-input" id="firebaseRoomInput" value="shaza-darling">
         </div>
-
-        <div class="form-group">
-          <label>Salon partagé :</label>
-          <input type="text" class="form-input" id="firebaseRoomInput" value="duo-shaza-copine">
-        </div>
-
-        <button class="btn-solid" id="saveFirebaseBtn" style="width: 100%;">
-          Connecter Firebase
+        <button class="btn-gradient-action" id="saveFirebaseBtn">
+          Synchroniser avec Firebase
         </button>
       </div>
 
-      <div class="card">
-        <div class="card-header-clean">
-          <span class="section-label">Données</span>
+      <div class="glass-card">
+        <div class="card-label-row">
+          <span class="card-label">Sauvegarde locale</span>
         </div>
-        <div style="display: flex; gap: 6px;">
-          <button class="btn-outline" id="exportDataBtn" style="flex: 1;">Télécharger JSON</button>
-          <button class="btn-outline" id="importDataBtn" style="flex: 1;">Importer</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="cal-btn-mini" id="exportDataBtn" style="flex: 1; padding: 12px;">Télécharger JSON</button>
+          <button class="cal-btn-mini" id="importDataBtn" style="flex: 1; padding: 12px;">Importer</button>
           <input type="file" id="importFileInput" accept=".json" style="display:none">
         </div>
       </div>
     </div>
   </main>
 
-  <!-- Bottom Navigation -->
-  <nav class="bottom-nav">
-    <button class="nav-tab-btn active" data-tab="calendar">Agenda</button>
-    <button class="nav-tab-btn" data-tab="pushups">Pompes</button>
-    <button class="nav-tab-btn" data-tab="profile">Stats</button>
-    <button class="nav-tab-btn" data-tab="settings">Réglages</button>
+  <!-- Bottom Floating Glass Navigation -->
+  <nav class="bottom-glass-nav">
+    <button class="bottom-nav-tab active-tab" data-tab="calendar">
+      <span style="font-size: 16px;">📅</span>
+      <span>Agenda</span>
+    </button>
+    <button class="bottom-nav-tab" data-tab="pushups">
+      <span style="font-size: 16px;">⚡</span>
+      <span>Pompes</span>
+    </button>
+    <button class="bottom-nav-tab" data-tab="profile">
+      <span style="font-size: 16px;">📊</span>
+      <span>Stats</span>
+    </button>
+    <button class="bottom-nav-tab" data-tab="settings">
+      <span style="font-size: 16px;">⚙️</span>
+      <span>Réglages</span>
+    </button>
   </nav>
 
-  <!-- MODAL : LIEN COPINE -->
-  <div class="modal-overlay" id="shareModal">
-    <div class="modal-box">
-      <div class="modal-head">
-        <span>Partager avec ta copine</span>
-        <button class="close-btn" id="closeShareModalBtn">✕</button>
+  <!-- MODAL : LIEN PARTAGE POUR DARLING -->
+  <div class="sheet-overlay" id="shareModal">
+    <div class="sheet-modal-card">
+      <div class="sheet-header-title">
+        <span>Partager avec darling</span>
+        <button class="sheet-close-btn" id="closeShareModalBtn">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
-        Ta copine n'a besoin d'aucun compte. Envoie-lui ce lien : dès qu'elle l'ouvre, elle accède directement à son profil et à vos données partagées.
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+        Envoie ce lien à darling sur WhatsApp ou par SMS. Dès qu'elle l'ouvre sur son téléphone, elle est directement connectée à son agenda et à vos pompes en direct.
       </p>
-      <div class="form-group">
-        <input type="text" class="form-input" id="shareUrlInput" readonly style="font-size: 11px;">
+      <div class="sheet-input-group">
+        <input type="text" class="sheet-text-input" id="shareUrlInput" readonly style="color: #38bdf8;">
       </div>
-      <button class="btn-solid" id="copyShareUrlBtn" style="width: 100%;">
+      <button class="btn-gradient-action" id="copyShareUrlBtn">
         Copier le lien
       </button>
     </div>
   </div>
 
-  <!-- MODAL : NOUVELLE GOMMETTE -->
-  <div class="modal-overlay" id="newStickerModal">
-    <div class="modal-box">
-      <div class="modal-head">
+  <!-- MODAL : CRÉER NOUVELLE GOMMETTE -->
+  <div class="sheet-overlay" id="newStickerModal">
+    <div class="sheet-modal-card">
+      <div class="sheet-header-title">
         <span>Créer une gommette</span>
-        <button class="close-btn" id="closeNewStickerModalBtn">✕</button>
+        <button class="sheet-close-btn" id="closeNewStickerModalBtn">✕</button>
       </div>
-      <div class="form-group">
-        <label>Nom du médicament / soin</label>
-        <input type="text" class="form-input" id="newStickerName" placeholder="Ex: Gélule Matin, Traitement 14h...">
+      <div class="sheet-input-group">
+        <label>Nom du médicament / traitement</label>
+        <input type="text" class="sheet-text-input" id="newStickerName" placeholder="Ex: Gélule Matin, Gouttes 14h...">
       </div>
-      <div class="form-group">
-        <label>Couleur</label>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input type="color" id="newStickerColor" value="#991b1b" style="width: 40px; height: 32px; border: none; border-radius: 4px; cursor: pointer; background: transparent;">
-          <span style="font-size: 11px; color: var(--text-muted);">Choisis la teinte désirée</span>
+      <div class="sheet-input-group">
+        <label>Couleur personnalisée</label>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px;">
+          <input type="color" id="newStickerColor" value="#f43f5e" style="width: 44px; height: 38px; border: none; border-radius: 8px; cursor: pointer; background: transparent;">
+          <span style="font-size: 12px; color: var(--text-muted);">Touche le carré pour choisir n'importe quelle nuance</span>
         </div>
       </div>
-      <button class="btn-solid" id="saveNewStickerBtn" style="width: 100%; margin-top: 8px;">
-        Créer la gommette
+      <button class="btn-gradient-action" id="saveNewStickerBtn" style="margin-top: 8px;">
+        Ajouter la gommette
       </button>
     </div>
   </div>
 
-  <!-- MODAL : DÉTAIL D'UN JOUR -->
-  <div class="modal-overlay" id="dayDetailModal">
-    <div class="modal-box">
-      <div class="modal-head">
-        <span id="dayDetailModalDate">18 Octobre 2026</span>
-        <button class="close-btn" id="closeDayDetailModalBtn">✕</button>
+  <!-- MODAL : DÉTAIL D'UN JOUR DE L'AGENDA -->
+  <div class="sheet-overlay" id="dayDetailModal">
+    <div class="sheet-modal-card">
+      <div class="sheet-header-title">
+        <span id="dayDetailModalDate">19 Octobre 2026</span>
+        <button class="sheet-close-btn" id="closeDayDetailModalBtn">✕</button>
       </div>
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px;">
-        Gommettes du jour :
+      <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase;">
+        Traitements du jour :
       </div>
-      <div id="dayDetailStickersList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;"></div>
-      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
-        <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Ajouter une gommette sur ce jour :</div>
-        <div id="dayDetailAddList" style="display: flex; gap: 4px; flex-wrap: wrap;"></div>
+      <div id="dayDetailStickersList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+      <div style="border-top: 1px solid var(--border); padding-top: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">
+          Coller une gommette sur cette journée :
+        </div>
+        <div id="dayDetailAddList" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
       </div>
-    </div>
-  </div>
-
-  <!-- MODAL : SÉRIE PERSONNALISÉE -->
-  <div class="modal-overlay" id="customModal">
-    <div class="modal-box">
-      <div class="modal-head">
-        <span>Série personnalisée</span>
-        <button class="close-btn" id="cancelCustomBtn">✕</button>
-      </div>
-      <div class="form-group">
-        <label>Nombre de pompes</label>
-        <input type="number" id="customRepsInput" class="form-input" min="1" max="1000" placeholder="Ex: 25, 40">
-      </div>
-      <button class="btn-solid" id="confirmCustomBtn" style="width: 100%; margin-top: 6px;">
-        Valider la série
-      </button>
     </div>
   </div>
 
