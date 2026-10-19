@@ -62,6 +62,7 @@
 
   // --- Initialisation ---
   function init() {
+    ParticleFX.init();
     loadLocalConfig();
     checkUrlParams();
     loadLocalData();
@@ -220,52 +221,404 @@
     }
   }
 
-  // --- Audio Haptics & Effets Sonores ---
-  function playSound(type) {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      const now = ctx.currentTime;
+  // --- Moteur Audio & Synthétiseur Procédural (Web Audio API) ---
+  let sharedAudioCtx = null;
 
-      if (type === 'key') {
+  function getAudioCtx() {
+    if (!sharedAudioCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) sharedAudioCtx = new AudioCtx();
+    }
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
+  }
+
+  const SoundFX = {
+    // Touche pavé numérique : clic doux marimba avec pitch montant légèrement par chiffre
+    key(digit) {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const num = typeof digit === 'number' ? digit : (parseInt(digit, 10) || 1);
+        const freq = 360 + num * 24;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.82, now + 0.045);
+
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate(12); } catch (e) {}
+    },
+
+    // Touche Effacer (⌫) : léger tap étouffé descendant
+    backspace() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.065);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.065);
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) {}
+    },
+
+    // Touche Clear (C) : double micro-tap
+    clear() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        [0, 0.04].forEach((delay, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const t = now + delay;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(i === 0 ? 340 : 230, t);
+          gain.gain.setValueAtTime(0.08, t);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.035);
+        });
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate([10, 20, 10]); } catch (e) {}
+    },
+
+    // Presets rapides (+5, +10, +15, +20, +50) : double tonalité cristalline ascendante
+    preset(addVal) {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        const base = addVal >= 50 ? 660 : addVal >= 20 ? 587 : 523;
+        [0, 0.04].forEach((delay, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const t = now + delay;
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(i === 0 ? base : base * 1.33, t);
+          gain.gain.setValueAtTime(0.1, t);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.08);
+        });
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch (e) {}
+    },
+
+    // Validation série pompes : accord céleste arpégé (C5, E5, G5, C6) riche et gratifiant
+    submit() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const t = now + idx * 0.065;
+          osc.type = idx === notes.length - 1 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.38);
+        });
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate([35, 40, 60]); } catch (e) {}
+    },
+
+    // Collage d'une gommette : bruitage mécanique de tampon satisfaisant avec résonance
+    stamp() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        // Bruit d'impact
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(540, now);
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.04);
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+
+        // Résonance brillante
+        const bell = ctx.createOscillator();
+        const bellGain = ctx.createGain();
+        bell.type = 'triangle';
+        bell.frequency.setValueAtTime(880, now + 0.02);
+        bellGain.gain.setValueAtTime(0.1, now + 0.02);
+        bellGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+        bell.connect(bellGain);
+        bellGain.connect(ctx.destination);
+        bell.start(now + 0.02);
+        bell.stop(now + 0.16);
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate(28); } catch (e) {}
+    },
+
+    // Décollage gommette : son de décollement / pincement papier
+    unstick() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(680, now);
+        osc.frequency.exponentialRampToValueAtTime(420, now + 0.045);
         gain.gain.setValueAtTime(0.08, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) {}
+    },
+
+    // Validation traitement pris ("Valider ✓") : carillon de cristal pur (E6 & A6)
+    validate() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        [1318.5, 1760.0].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const t = now + i * 0.05;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.42);
+        });
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate([40, 30, 45]); } catch (e) {}
+    },
+
+    // Changement d'onglet : swoosh aéré futuriste
+    tab() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(620, now + 0.05);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
         osc.start(now);
         osc.stop(now + 0.06);
-      } else if (type === 'success') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(523.25, now);
-        osc.frequency.setValueAtTime(659.25, now + 0.08);
-        osc.frequency.setValueAtTime(783.99, now + 0.16);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-        osc.start(now);
-        osc.stop(now + 0.35);
-      } else if (type === 'sticker') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, now);
-        osc.frequency.exponentialRampToValueAtTime(900, now + 0.08);
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-        osc.start(now);
-        osc.stop(now + 0.18);
-      }
-    } catch (e) {}
+      } catch (e) {}
+    },
 
-    if (navigator.vibrate) {
+    // Annuler (Undo) : glissando descendant doux
+    undo() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
       try {
-        navigator.vibrate(type === 'success' ? [40, 30, 60] : [25]);
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(580, now);
+        osc.frequency.exponentialRampToValueAtTime(260, now + 0.12);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.13);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      } catch (e) {}
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch (e) {}
+    },
+
+    // Micro interaction : navigation calendrier, sélecteur
+    nav() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(480, now);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.03);
       } catch (e) {}
     }
+  };
+
+  function playSound(type) {
+    if (SoundFX[type]) {
+      SoundFX[type]();
+    } else {
+      SoundFX.key();
+    }
   }
+
+  // --- Moteur de Particules & Sparkles Visuels (Canvas 2D) ---
+  const ParticleFX = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+    animId: null,
+
+    init() {
+      this.canvas = $('fxCanvas');
+      if (!this.canvas) return;
+      this.ctx = this.canvas.getContext('2d');
+      this.resize();
+      window.addEventListener('resize', () => this.resize());
+    },
+
+    resize() {
+      if (!this.canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      this.canvas.width = window.innerWidth * dpr;
+      this.canvas.height = window.innerHeight * dpr;
+      if (this.ctx) {
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+    },
+
+    burst(x, y, options = {}) {
+      if (!this.canvas || !this.ctx) this.init();
+      if (!this.canvas || !this.ctx) return;
+      const count = options.count || 28;
+      const colors = options.colors || ['#f43f5e', '#ec4899', '#8b5cf6', '#ffffff', '#38bdf8'];
+      const maxSpeed = options.speed || 5;
+
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * maxSpeed + 1.2;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const size = Math.random() * 4.5 + 2;
+        const isStar = Math.random() > 0.6;
+
+        this.particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.2,
+          color: color,
+          size: size,
+          alpha: 1,
+          decay: Math.random() * 0.022 + 0.016,
+          gravity: options.gravity !== undefined ? options.gravity : 0.16,
+          rotation: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.2,
+          isStar: isStar
+        });
+      }
+
+      if (!this.animId) {
+        this.loop();
+      }
+    },
+
+    burstElement(el, options = {}) {
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      this.burst(x, y, options);
+    },
+
+    loop() {
+      if (!this.ctx || !this.canvas) return;
+      this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const p = this.particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.vx *= 0.98;
+        p.alpha -= p.decay;
+        p.rotation += p.rotSpeed;
+
+        if (p.alpha <= 0) {
+          this.particles.splice(i, 1);
+          continue;
+        }
+
+        this.ctx.save();
+        this.ctx.globalAlpha = Math.max(0, p.alpha);
+        this.ctx.translate(p.x, p.y);
+        this.ctx.rotate(p.rotation);
+        this.ctx.fillStyle = p.color;
+        this.ctx.shadowColor = p.color;
+        this.ctx.shadowBlur = 6;
+
+        if (p.isStar) {
+          const s = p.size;
+          this.ctx.fillRect(-s / 2, -s / 6, s, s / 3);
+          this.ctx.fillRect(-s / 6, -s / 2, s / 3, s);
+        } else {
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          this.ctx.fill();
+        }
+
+        this.ctx.restore();
+      }
+
+      if (this.particles.length > 0) {
+        this.animId = requestAnimationFrame(() => this.loop());
+      } else {
+        this.animId = null;
+        this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      }
+    }
+  };
 
   function showToast(msg) {
     const t = $('toast');
@@ -299,11 +652,12 @@
     $$('.keypad-key').forEach((key) => {
       key.addEventListener('click', () => {
         const keyVal = key.dataset.key;
-        playSound('key');
 
         if (keyVal === 'clear') {
+          SoundFX.clear();
           revolutInputValue = 0;
         } else if (keyVal === 'backspace') {
+          SoundFX.backspace();
           const str = String(revolutInputValue);
           if (str.length <= 1) {
             revolutInputValue = 0;
@@ -311,7 +665,8 @@
             revolutInputValue = parseInt(str.slice(0, -1), 10) || 0;
           }
         } else {
-          // Ajouter le chiffre
+          // Ajouter le chiffre avec feedback sonore mélodique
+          SoundFX.key(keyVal);
           const str = String(revolutInputValue);
           if (str === '0') {
             revolutInputValue = parseInt(keyVal, 10);
@@ -329,7 +684,7 @@
     $$('.preset-pill').forEach((pill) => {
       pill.addEventListener('click', () => {
         const addVal = parseInt(pill.dataset.add, 10);
-        playSound('key');
+        SoundFX.preset(addVal);
         revolutInputValue = Math.min(9999, revolutInputValue + addVal);
         updateRevolutDisplay();
       });
@@ -345,6 +700,7 @@
 
     // Sélecteur d'acteur pour la saisie (Noter pour Shaza / Noter pour darling)
     $('selectP1Btn').addEventListener('click', () => {
+      SoundFX.nav();
       config.activeLoggerUser = 'user1';
       $('selectP1Btn').classList.add('active');
       $('selectP2Btn').classList.remove('active');
@@ -354,6 +710,7 @@
     });
 
     $('selectP2Btn').addEventListener('click', () => {
+      SoundFX.nav();
       config.activeLoggerUser = 'user2';
       $('selectP2Btn').classList.add('active');
       $('selectP1Btn').classList.remove('active');
@@ -364,7 +721,12 @@
   }
 
   function updateRevolutDisplay() {
-    $('revolutCurrentInput').textContent = revolutInputValue;
+    const inputEl = $('revolutCurrentInput');
+    inputEl.textContent = revolutInputValue;
+    inputEl.classList.remove('digit-bounce');
+    void inputEl.offsetWidth; // re-flow pour rejouer l'animation élastique
+    inputEl.classList.add('digit-bounce');
+
     const submitBtn = $('revolutSubmitBtn');
 
     if (revolutInputValue > 0) {
@@ -393,8 +755,14 @@
     user.logs.unshift(logItem);
     lastLoggedInfo = { userId, logId: logItem.id };
 
-    playSound('success');
-    showToast(`💪 +${count} pompes ajoutées pour ${user.name} !`);
+    SoundFX.submit();
+    ParticleFX.burstElement($('revolutSubmitBtn'), {
+      count: 38,
+      colors: [user.color, '#38bdf8', '#fbbf24', '#ffffff', '#ec4899'],
+      speed: 6
+    });
+
+    showToast(`+${count} pompes enregistrées pour ${user.name}`);
 
     // Afficher la barre d'annulation temporaire
     $('undoText').textContent = `${user.name} : +${count} pompes`;
@@ -417,6 +785,7 @@
     if (user && user.logs) {
       const idx = user.logs.findIndex((l) => l.id === logId);
       if (idx !== -1) {
+        SoundFX.undo();
         const removed = user.logs.splice(idx, 1)[0];
         updateUI();
         syncDataToFirebase();
@@ -433,6 +802,7 @@
     if (user && user.logs) {
       const idx = user.logs.findIndex((l) => l.id === logId);
       if (idx !== -1) {
+        SoundFX.unstick();
         user.logs.splice(idx, 1);
         updateUI();
         syncDataToFirebase();
@@ -457,7 +827,7 @@
     return appData.health.calendar[userId]?.[dateStr] || [];
   }
 
-  function toggleStickerOnDay(userId, dateStr, stickerId) {
+  function toggleStickerOnDay(userId, dateStr, stickerId, clickEvent = null) {
     ensureDataStructure();
     if (!appData.health.calendar[userId][dateStr]) {
       appData.health.calendar[userId][dateStr] = [];
@@ -465,12 +835,12 @@
 
     let dayStickers = appData.health.calendar[userId][dateStr];
     const existingIndex = dayStickers.findIndex((s) => s.stickerId === stickerId);
-    const def = (appData.health.stickers || []).find((s) => s.id === stickerId) || { name: 'Gommette' };
+    const def = (appData.health.stickers || []).find((s) => s.id === stickerId) || { name: 'Gommette', color: '#f43f5e' };
 
     if (existingIndex !== -1) {
       // Décoller
       dayStickers.splice(existingIndex, 1);
-      playSound('key');
+      SoundFX.unstick();
       showToast(`Gommette "${def.name}" retirée`);
     } else {
       // Coller
@@ -480,8 +850,15 @@
         taken: false,
         addedAt: new Date().toISOString()
       });
-      playSound('sticker');
-      showToast(`✨ "${def.name}" collée sur le ${formatDateFrench(dateStr)} !`);
+      SoundFX.stamp();
+      if (clickEvent && clickEvent.clientX) {
+        ParticleFX.burst(clickEvent.clientX, clickEvent.clientY, {
+          count: 22,
+          colors: [def.color, '#ffffff', '#fbbf24', '#f43f5e'],
+          speed: 4
+        });
+      }
+      showToast(`"${def.name}" collée sur le ${formatDateFrench(dateStr)}`);
     }
 
     appData.health.calendar[userId][dateStr] = dayStickers;
@@ -489,14 +866,26 @@
     syncDataToFirebase();
   }
 
-  function toggleStickerTaken(userId, dateStr, entryId) {
+  function toggleStickerTaken(userId, dateStr, entryId, clickEvent = null) {
     ensureDataStructure();
     const dayStickers = appData.health.calendar[userId]?.[dateStr] || [];
     const entry = dayStickers.find((s) => s.id === entryId);
     if (entry) {
       entry.taken = !entry.taken;
-      playSound(entry.taken ? 'success' : 'key');
-      showToast(entry.taken ? 'Validé ✓ Traitement pris' : 'Statut réinitialisé');
+      if (entry.taken) {
+        SoundFX.validate();
+        if (clickEvent && clickEvent.clientX) {
+          ParticleFX.burst(clickEvent.clientX, clickEvent.clientY, {
+            count: 26,
+            colors: ['#10b981', '#34d399', '#fbbf24', '#ffffff'],
+            speed: 4.5
+          });
+        }
+        showToast('Validé ✓ Traitement pris');
+      } else {
+        SoundFX.unstick();
+        showToast('Statut réinitialisé');
+      }
       renderCalendar();
       syncDataToFirebase();
     }
@@ -573,10 +962,14 @@
       cell.addEventListener('click', (e) => {
         e.stopPropagation();
         if (activeSelectedStickerId) {
-          // Mode collage actif : coller ou décoller directement
-          toggleStickerOnDay(agendaOwner, fullDateStr, activeSelectedStickerId);
+          // Mode collage actif : coller ou décoller directement avec animation de cellule
+          cell.classList.remove('cell-stamped');
+          void cell.offsetWidth;
+          cell.classList.add('cell-stamped');
+          toggleStickerOnDay(agendaOwner, fullDateStr, activeSelectedStickerId, e);
         } else {
           // Mode consultation : ouvrir le détail de la journée
+          SoundFX.nav();
           openDayDetailModal(agendaOwner, fullDateStr);
         }
       });
@@ -614,11 +1007,12 @@
         if (activeSelectedStickerId === stk.id) {
           // Désactiver le mode collage
           activeSelectedStickerId = null;
+          SoundFX.unstick();
           $('activeStickerAlert').style.display = 'none';
         } else {
           // Activer le mode collage
           activeSelectedStickerId = stk.id;
-          playSound('key');
+          SoundFX.nav();
           $('activeStickerAlert').style.display = 'flex';
           $('activeStickerAlertText').textContent = `Gommette "${stk.name}" en main ! Touche les jours du calendrier pour la coller.`;
         }
@@ -670,13 +1064,15 @@
 
         list.appendChild(row);
 
-        row.querySelector(`#toggleDone_${entry.id}`).addEventListener('click', () => {
-          toggleStickerTaken(userId, dateStr, entry.id);
+        const doneBtn = row.querySelector(`#toggleDone_${entry.id}`);
+        doneBtn.addEventListener('click', (e) => {
+          doneBtn.classList.add('btn-success-fx');
+          toggleStickerTaken(userId, dateStr, entry.id, e);
           openDayDetailModal(userId, dateStr);
         });
 
-        row.querySelector(`#delStk_${entry.id}`).addEventListener('click', () => {
-          toggleStickerOnDay(userId, dateStr, entry.stickerId);
+        row.querySelector(`#delStk_${entry.id}`).addEventListener('click', (e) => {
+          toggleStickerOnDay(userId, dateStr, entry.stickerId, e);
           openDayDetailModal(userId, dateStr);
         });
       });
@@ -690,8 +1086,8 @@
       btn.className = 'sticker-swatch-item';
       btn.style.backgroundColor = stk.color;
       btn.innerHTML = `+ ${stk.name}`;
-      btn.addEventListener('click', () => {
-        toggleStickerOnDay(userId, dateStr, stk.id);
+      btn.addEventListener('click', (e) => {
+        toggleStickerOnDay(userId, dateStr, stk.id, e);
         openDayDetailModal(userId, dateStr);
       });
       addList.appendChild(btn);
@@ -929,22 +1325,26 @@
 
     // Navigation Calendrier (Mois précédent / suivant)
     $('calPrevMonthBtn').addEventListener('click', () => {
+      SoundFX.nav();
       currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
       renderCalendar();
     });
 
     $('calNextMonthBtn').addEventListener('click', () => {
+      SoundFX.nav();
       currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
       renderCalendar();
     });
 
     $('calTodayBtn').addEventListener('click', () => {
+      SoundFX.nav();
       currentMonthDate = new Date();
       renderCalendar();
     });
 
     // Switcher Propriétaire Agenda
     $('agendaOwnerP2Btn').addEventListener('click', () => {
+      SoundFX.nav();
       config.activeAgendaOwner = 'user2';
       $('agendaOwnerP2Btn').classList.add('active');
       $('agendaOwnerP1Btn').classList.remove('active');
@@ -952,6 +1352,7 @@
     });
 
     $('agendaOwnerP1Btn').addEventListener('click', () => {
+      SoundFX.nav();
       config.activeAgendaOwner = 'user1';
       $('agendaOwnerP1Btn').classList.add('active');
       $('agendaOwnerP2Btn').classList.remove('active');
@@ -961,21 +1362,24 @@
     // Arrêter mode collage
     $('stopPlacingStickerBtn').addEventListener('click', () => {
       activeSelectedStickerId = null;
+      SoundFX.unstick();
       $('activeStickerAlert').style.display = 'none';
       renderStickersRibbon();
     });
 
     // Modal Nouvelle Gommette
     $('openNewStickerModalBtn').addEventListener('click', () => {
+      SoundFX.nav();
       $('newStickerModal').classList.add('sheet-open');
       $('newStickerName').value = '';
     });
 
     $('closeNewStickerModalBtn').addEventListener('click', () => {
+      SoundFX.nav();
       $('newStickerModal').classList.remove('sheet-open');
     });
 
-    $('saveNewStickerBtn').addEventListener('click', () => {
+    $('saveNewStickerBtn').addEventListener('click', (e) => {
       const name = $('newStickerName').value.trim();
       const color = $('newStickerColor').value;
       if (!name) return;
@@ -987,6 +1391,11 @@
         color: color
       });
 
+      SoundFX.submit();
+      if (e && e.clientX) {
+        ParticleFX.burst(e.clientX, e.clientY, { count: 20, colors: [color, '#ffffff'] });
+      }
+
       renderStickersRibbon();
       syncDataToFirebase();
       $('newStickerModal').classList.remove('sheet-open');
@@ -994,29 +1403,37 @@
     });
 
     $('closeDayDetailModalBtn').addEventListener('click', () => {
+      SoundFX.nav();
       $('dayDetailModal').classList.remove('sheet-open');
     });
 
     // Modal Partage
     $('openShareModalBtn').addEventListener('click', () => {
+      SoundFX.nav();
       generateShareUrl();
       $('shareModal').classList.add('sheet-open');
     });
 
     $('closeShareModalBtn').addEventListener('click', () => {
+      SoundFX.nav();
       $('shareModal').classList.remove('sheet-open');
     });
 
-    $('copyShareUrlBtn').addEventListener('click', () => {
+    $('copyShareUrlBtn').addEventListener('click', (e) => {
       const input = $('shareUrlInput');
       input.select();
+      SoundFX.preset(20);
+      if (e && e.clientX) {
+        ParticleFX.burst(e.clientX, e.clientY, { count: 20, colors: ['#38bdf8', '#ffffff'] });
+      }
       navigator.clipboard.writeText(input.value).then(() => {
-        showToast('📋 Lien copié ! Envoie-le à darling');
+        showToast('Lien copié ! Envoie-le à darling');
       });
     });
 
     // Stats Switch
     $('profTabP1').addEventListener('click', () => {
+      SoundFX.nav();
       config.activeProfileStats = 'user1';
       $('profTabP1').classList.add('active');
       $('profTabP2').classList.remove('active');
@@ -1025,6 +1442,7 @@
     });
 
     $('profTabP2').addEventListener('click', () => {
+      SoundFX.nav();
       config.activeProfileStats = 'user2';
       $('profTabP2').classList.add('active');
       $('profTabP1').classList.remove('active');
@@ -1087,6 +1505,7 @@
   function setupNavigation() {
     $$('.bottom-nav-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
+        SoundFX.tab();
         const targetTab = tab.dataset.tab;
         $$('.bottom-nav-tab').forEach((t) => t.classList.remove('active-tab'));
         $$('.tab-view-container').forEach((v) => v.classList.remove('active-view'));
