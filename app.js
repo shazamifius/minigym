@@ -12,11 +12,13 @@
   const CONFIG_KEY = 'duo_sante_config_v4';
 
   // --- Configuration Initiale ---
+  // --- Configuration Initiale ---
   let config = {
     myIdentity: 'user1', // 'user1' (Shaza) ou 'user2' (darling)
     activeLoggerUser: 'user1',
-    activeAgendaOwner: 'user2', // Par défaut : l'agenda de darling
-    activeProfileStats: 'user1'
+    activeAgendaOwner: 'user1',
+    activeProfileStats: 'user1',
+    activeTab: 'calendar'
   };
 
   let fbConfig = {
@@ -71,31 +73,74 @@
     setupEventListeners();
     setupRevolutKeypad();
     setupNavigation();
+    restoreActiveTab();
     updateUI();
+    updateHeaderIdentityBadge();
     generateShareUrl();
   }
 
-  // Vérifier si le lien a été ouvert avec ?role=copine ou ?role=darling
+  // Vérifier si le lien a été ouvert avec ?role=darling ou ?role=shaza
   function checkUrlParams() {
     const params = new URLSearchParams(window.location.search);
     const role = params.get('role');
     if (role === 'copine' || role === 'darling' || role === 'user2') {
-      config.myIdentity = 'user2';
-      config.activeLoggerUser = 'user2';
-      config.activeAgendaOwner = 'user2';
-      saveConfig();
+      setMyIdentity('user2', false);
       showToast('🌸 Espace darling connecté');
+      // Nettoyer l'URL dans la barre d'adresse pour ne pas re-forcer le rôle à chaque rafraîchissement
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (e) {}
+    } else if (role === 'shaza' || role === 'user1') {
+      setMyIdentity('user1', false);
+      showToast('💪 Espace Shaza connecté');
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (e) {}
     }
+  }
+
+  // Changer et verrouiller l'identité active sur cet appareil
+  function setMyIdentity(userId, showFeedback = true) {
+    config.myIdentity = userId;
+    config.activeLoggerUser = userId;
+    config.activeAgendaOwner = userId;
+    config.activeProfileStats = userId;
+    saveConfig();
+
+    if ($('myIdentitySelect')) $('myIdentitySelect').value = userId;
+    updateHeaderIdentityBadge();
+    updateUI();
+
+    if (showFeedback) {
+      SoundFX.preset(20);
+      const name = appData.users[userId]?.name || (userId === 'user1' ? 'Shaza' : 'darling');
+      showToast(`Profil actif : ${name}`);
+    }
+  }
+
+  function updateHeaderIdentityBadge() {
+    const dot = $('headerIdentityDot');
+    const label = $('headerIdentityName');
+    if (!label) return;
+    const isU2 = config.myIdentity === 'user2';
+    const user = isU2 ? appData.users.user2 : appData.users.user1;
+    label.textContent = user?.name || (isU2 ? 'darling' : 'Shaza');
+    if (dot) dot.style.color = user?.color || (isU2 ? 'var(--p2)' : 'var(--p1)');
   }
 
   function loadLocalConfig() {
     try {
       const savedConfig = localStorage.getItem(CONFIG_KEY);
-      if (savedConfig) config = { ...config, ...JSON.parse(savedConfig) };
+      if (savedConfig) {
+        config = { ...config, ...JSON.parse(savedConfig) };
+      }
+      if (!config.activeLoggerUser) config.activeLoggerUser = config.myIdentity || 'user1';
+      if (!config.activeAgendaOwner) config.activeAgendaOwner = config.myIdentity || 'user1';
+      if (!config.activeProfileStats) config.activeProfileStats = config.myIdentity || 'user1';
 
-      $('myIdentitySelect').value = config.myIdentity || 'user1';
-      $('firebaseRoomInput').value = fbConfig.room;
-      $('firebaseDbUrlInput').value = fbConfig.databaseURL;
+      if ($('myIdentitySelect')) $('myIdentitySelect').value = config.myIdentity || 'user1';
+      if ($('firebaseRoomInput')) $('firebaseRoomInput').value = fbConfig.room;
+      if ($('firebaseDbUrlInput')) $('firebaseDbUrlInput').value = fbConfig.databaseURL;
     } catch (e) {}
   }
 
@@ -699,25 +744,23 @@
     });
 
     // Sélecteur d'acteur pour la saisie (Noter pour Shaza / Noter pour darling)
-    $('selectP1Btn').addEventListener('click', () => {
+    const selectActor = (userId) => {
       SoundFX.nav();
-      config.activeLoggerUser = 'user1';
-      $('selectP1Btn').classList.add('active');
-      $('selectP2Btn').classList.remove('active');
-      $('cardPartnerP1').classList.add('active-selected');
-      $('cardPartnerP2').classList.remove('active-selected');
-      $('revolutTargetBadge').textContent = `Pour ${appData.users.user1.name}`;
-    });
+      config.activeLoggerUser = userId;
+      saveConfig();
+      const isU2 = userId === 'user2';
+      $('selectP2Btn').classList.toggle('active', isU2);
+      $('selectP1Btn').classList.toggle('active', !isU2);
+      $('cardPartnerP2').classList.toggle('active-selected', isU2);
+      $('cardPartnerP1').classList.toggle('active-selected', !isU2);
+      $('revolutTargetBadge').textContent = `Pour ${appData.users[userId]?.name || 'Duo'}`;
+      updateRevolutDisplay();
+    };
 
-    $('selectP2Btn').addEventListener('click', () => {
-      SoundFX.nav();
-      config.activeLoggerUser = 'user2';
-      $('selectP2Btn').classList.add('active');
-      $('selectP1Btn').classList.remove('active');
-      $('cardPartnerP2').classList.add('active-selected');
-      $('cardPartnerP1').classList.remove('active-selected');
-      $('revolutTargetBadge').textContent = `Pour ${appData.users.user2.name}`;
-    });
+    $('selectP1Btn').addEventListener('click', () => selectActor('user1'));
+    $('selectP2Btn').addEventListener('click', () => selectActor('user2'));
+    $('cardPartnerP1').addEventListener('click', () => selectActor('user1'));
+    $('cardPartnerP2').addEventListener('click', () => selectActor('user2'));
   }
 
   function updateRevolutDisplay() {
@@ -1128,6 +1171,24 @@
 
     $('p1Score').textContent = score1;
     $('p2Score').textContent = score2;
+
+    // Synchronisation dynamique de tous les sélecteurs
+    const isLogU2 = config.activeLoggerUser === 'user2';
+    $('selectP2Btn').classList.toggle('active', isLogU2);
+    $('selectP1Btn').classList.toggle('active', !isLogU2);
+    $('cardPartnerP2').classList.toggle('active-selected', isLogU2);
+    $('cardPartnerP1').classList.toggle('active-selected', !isLogU2);
+    $('revolutTargetBadge').textContent = `Pour ${isLogU2 ? u2.name : u1.name}`;
+
+    const isAgendaU2 = config.activeAgendaOwner === 'user2';
+    $('agendaOwnerP2Btn').classList.toggle('active', isAgendaU2);
+    $('agendaOwnerP1Btn').classList.toggle('active', !isAgendaU2);
+
+    const isProfU2 = config.activeProfileStats === 'user2';
+    $('profTabP2').classList.toggle('active', isProfU2);
+    $('profTabP1').classList.toggle('active', !isProfU2);
+
+    updateHeaderIdentityBadge();
   }
 
   function renderActivityFeed() {
@@ -1316,7 +1377,8 @@
 
   function generateShareUrl() {
     const baseUrl = window.location.origin + window.location.pathname;
-    $('shareUrlInput').value = `${baseUrl}?role=darling`;
+    if ($('shareUrlDarlingInput')) $('shareUrlDarlingInput').value = `${baseUrl}?role=darling`;
+    if ($('shareUrlShazaInput')) $('shareUrlShazaInput').value = `${baseUrl}?role=shaza`;
   }
 
   // --- Gestion des Événements & Modals ---
@@ -1346,6 +1408,7 @@
     $('agendaOwnerP2Btn').addEventListener('click', () => {
       SoundFX.nav();
       config.activeAgendaOwner = 'user2';
+      saveConfig();
       $('agendaOwnerP2Btn').classList.add('active');
       $('agendaOwnerP1Btn').classList.remove('active');
       renderCalendar();
@@ -1354,10 +1417,23 @@
     $('agendaOwnerP1Btn').addEventListener('click', () => {
       SoundFX.nav();
       config.activeAgendaOwner = 'user1';
+      saveConfig();
       $('agendaOwnerP1Btn').classList.add('active');
       $('agendaOwnerP2Btn').classList.remove('active');
       renderCalendar();
     });
+
+    // Bouton Changement Rapide d'Identité dans l'En-tête
+    if ($('headerIdentityBtn')) {
+      $('headerIdentityBtn').addEventListener('click', (e) => {
+        const nextId = config.myIdentity === 'user1' ? 'user2' : 'user1';
+        setMyIdentity(nextId, true);
+        if (e && e.clientX) {
+          const color = nextId === 'user2' ? '#f43f5e' : '#4ade80';
+          ParticleFX.burst(e.clientX, e.clientY, { count: 18, colors: [color, '#ffffff'] });
+        }
+      });
+    }
 
     // Arrêter mode collage
     $('stopPlacingStickerBtn').addEventListener('click', () => {
@@ -1419,22 +1495,39 @@
       $('shareModal').classList.remove('sheet-open');
     });
 
-    $('copyShareUrlBtn').addEventListener('click', (e) => {
-      const input = $('shareUrlInput');
-      input.select();
-      SoundFX.preset(20);
-      if (e && e.clientX) {
-        ParticleFX.burst(e.clientX, e.clientY, { count: 20, colors: ['#38bdf8', '#ffffff'] });
-      }
-      navigator.clipboard.writeText(input.value).then(() => {
-        showToast('Lien copié ! Envoie-le à darling');
+    if ($('copyShareUrlDarlingBtn')) {
+      $('copyShareUrlDarlingBtn').addEventListener('click', (e) => {
+        const input = $('shareUrlDarlingInput');
+        input.select();
+        SoundFX.preset(20);
+        if (e && e.clientX) {
+          ParticleFX.burst(e.clientX, e.clientY, { count: 20, colors: ['#f43f5e', '#ffffff'] });
+        }
+        navigator.clipboard.writeText(input.value).then(() => {
+          showToast('Lien darling copié !');
+        });
       });
-    });
+    }
+
+    if ($('copyShareUrlShazaBtn')) {
+      $('copyShareUrlShazaBtn').addEventListener('click', (e) => {
+        const input = $('shareUrlShazaInput');
+        input.select();
+        SoundFX.preset(20);
+        if (e && e.clientX) {
+          ParticleFX.burst(e.clientX, e.clientY, { count: 20, colors: ['#4ade80', '#ffffff'] });
+        }
+        navigator.clipboard.writeText(input.value).then(() => {
+          showToast('Lien Shaza copié !');
+        });
+      });
+    }
 
     // Stats Switch
     $('profTabP1').addEventListener('click', () => {
       SoundFX.nav();
       config.activeProfileStats = 'user1';
+      saveConfig();
       $('profTabP1').classList.add('active');
       $('profTabP2').classList.remove('active');
       renderProfileStats();
@@ -1444,6 +1537,7 @@
     $('profTabP2').addEventListener('click', () => {
       SoundFX.nav();
       config.activeProfileStats = 'user2';
+      saveConfig();
       $('profTabP2').classList.add('active');
       $('profTabP1').classList.remove('active');
       renderProfileStats();
@@ -1454,10 +1548,19 @@
     $('saveProfilesBtn').addEventListener('click', () => {
       appData.users.user1.name = $('p1NameInput').value.trim() || 'Shaza';
       appData.users.user2.name = $('p2NameInput').value.trim() || 'darling';
+      if ($('myIdentitySelect')) config.myIdentity = $('myIdentitySelect').value;
+      saveConfig();
+      updateHeaderIdentityBadge();
       updateUI();
       syncDataToFirebase();
-      showToast('Prénoms enregistrés');
+      showToast('Profils enregistrés');
     });
+
+    if ($('myIdentitySelect')) {
+      $('myIdentitySelect').addEventListener('change', () => {
+        setMyIdentity($('myIdentitySelect').value, true);
+      });
+    }
 
     // Paramètres Firebase
     $('saveFirebaseBtn').addEventListener('click', () => {
@@ -1507,6 +1610,9 @@
       tab.addEventListener('click', () => {
         SoundFX.tab();
         const targetTab = tab.dataset.tab;
+        config.activeTab = targetTab;
+        saveConfig();
+
         $$('.bottom-nav-tab').forEach((t) => t.classList.remove('active-tab'));
         $$('.tab-view-container').forEach((v) => v.classList.remove('active-view'));
 
@@ -1520,6 +1626,19 @@
         if (targetTab === 'profile') renderHeatmap();
       });
     });
+  }
+
+  function restoreActiveTab() {
+    const targetTab = config.activeTab || 'calendar';
+    const tab = document.querySelector(`.bottom-nav-tab[data-tab="${targetTab}"]`);
+    if (tab) {
+      $$('.bottom-nav-tab').forEach((t) => t.classList.remove('active-tab'));
+      $$('.tab-view-container').forEach((v) => v.classList.remove('active-view'));
+
+      tab.classList.add('active-tab');
+      const view = $(`view-${targetTab}`);
+      if (view) view.classList.add('active-view');
+    }
   }
 
   window.addEventListener('DOMContentLoaded', init);

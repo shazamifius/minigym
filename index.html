@@ -209,6 +209,31 @@
       gap: 8px;
     }
 
+    .identity-pill-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .identity-pill-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .identity-dot {
+      font-size: 10px;
+    }
+
     .share-pill-btn {
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--border);
@@ -1137,6 +1162,10 @@
       </div>
     </div>
     <div class="header-right">
+      <button class="identity-pill-btn" id="headerIdentityBtn" title="Changer d'utilisateur sur cet écran">
+        <span class="identity-dot" id="headerIdentityDot" style="color: var(--p1);">●</span>
+        <span id="headerIdentityName">Shaza</span>
+      </button>
       <button class="share-pill-btn" id="openShareModalBtn">
         <span>Partager</span>
       </button>
@@ -1439,22 +1468,36 @@
     </button>
   </nav>
 
-  <!-- MODAL : LIEN PARTAGE POUR DARLING -->
+  <!-- MODAL : LIEN PARTAGE & IDENTITÉ -->
   <div class="sheet-overlay" id="shareModal">
     <div class="sheet-modal-card">
       <div class="sheet-header-title">
-        <span>Partager avec darling</span>
+        <span>Liens magiques & Profils</span>
         <button class="sheet-close-btn" id="closeShareModalBtn">✕</button>
       </div>
-      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
-        Envoie ce lien à darling sur WhatsApp ou par SMS. Dès qu'elle l'ouvre sur son téléphone, elle est directement connectée à son agenda et à vos pompes en direct.
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
+        Chaque lien configure l'écran pour retenir qui utilise l'appareil. Les données sont partagées en direct dans les deux sens !
       </p>
-      <div class="sheet-input-group">
-        <input type="text" class="sheet-text-input" id="shareUrlInput" readonly style="color: #38bdf8;">
+
+      <div class="sheet-input-group" style="margin-bottom: 14px;">
+        <label>Lien pour darling (Son agenda & ses pompes par défaut)</label>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <input type="text" class="sheet-text-input" id="shareUrlDarlingInput" readonly style="color: #f43f5e; font-size: 12px; padding: 10px;">
+          <button class="cal-btn-mini" id="copyShareUrlDarlingBtn" style="white-space: nowrap; padding: 8px 14px; font-weight: 700;">Copier</button>
+        </div>
       </div>
-      <button class="btn-gradient-action" id="copyShareUrlBtn">
-        Copier le lien
-      </button>
+
+      <div class="sheet-input-group" style="margin-bottom: 16px;">
+        <label>Lien pour Shaza (Ton agenda & tes pompes par défaut)</label>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <input type="text" class="sheet-text-input" id="shareUrlShazaInput" readonly style="color: #4ade80; font-size: 12px; padding: 10px;">
+          <button class="cal-btn-mini" id="copyShareUrlShazaBtn" style="white-space: nowrap; padding: 8px 14px; font-weight: 700;">Copier</button>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: var(--text-dim); line-height: 1.4; border-top: 1px solid var(--border); padding-top: 12px;">
+        💡 <strong>Besoin de changer ?</strong> Touche simplement le badge avec le prénom en haut à droite pour basculer entre Shaza et darling en 1 clic.
+      </div>
     </div>
   </div>
 
